@@ -31,6 +31,7 @@ interface ConversationDrawerProps {
   onSelectChat: (id: string) => void;
   onDeleteChat: (id: string) => void;
   onRenameChat: (id: string, title: string) => void;
+  onClearAll?: () => void;
 }
 
 export function ConversationDrawer({
@@ -42,6 +43,7 @@ export function ConversationDrawer({
   onSelectChat,
   onDeleteChat,
   onRenameChat,
+  onClearAll,
 }: ConversationDrawerProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -102,7 +104,7 @@ export function ConversationDrawer({
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
-      {/* Sidebar drawer — matches screenshot sidebar */}
+      {/* Sidebar drawer */}
       <Animated.View
         style={[
           styles.drawer,
@@ -138,7 +140,6 @@ export function ConversationDrawer({
               {
                 backgroundColor: colors.surface,
                 borderColor: colors.border,
-                shadowColor: '#000',
               },
             ]}
             onPress={() => {
@@ -152,6 +153,30 @@ export function ConversationDrawer({
             <Feather name="plus" size={16} color={colors.text} />
             <Text style={[styles.newChatText, { color: colors.text }]}>New chat</Text>
           </TouchableOpacity>
+
+          {conversations.length > 0 && onClearAll && (
+            <TouchableOpacity
+              style={styles.clearAllBtn}
+              onPress={() =>
+                Alert.alert('Clear all history', 'Delete every conversation? This cannot be undone.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Clear',
+                    style: 'destructive',
+                    onPress: () => {
+                      onClearAll();
+                      if (Platform.OS !== 'web') {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                      }
+                    },
+                  },
+                ])
+              }
+            >
+              <Feather name="trash-2" size={14} color={colors.destructive} />
+              <Text style={[styles.clearAllText, { color: colors.destructive }]}>Clear</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* RECENT label */}
@@ -262,18 +287,20 @@ function ConversationItem({
               setEditValue(conversation.title);
               setEditing(true);
             }}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            style={styles.actionBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Feather name="edit-3" size={12} color={colors.textSubtle} />
+            <Feather name="edit-3" size={14} color={colors.textSubtle} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={(e) => {
               e.stopPropagation();
               onDelete();
             }}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            style={styles.actionBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Feather name="trash-2" size={12} color={colors.destructive} />
+            <Feather name="trash-2" size={14} color={colors.destructive} />
           </TouchableOpacity>
         </View>
       )}
@@ -317,6 +344,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
   },
   newChatWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 12,
     paddingBottom: 20,
   },
@@ -328,7 +358,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     borderRadius: 24,
     borderWidth: 1,
-    alignSelf: 'flex-start',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 3,
@@ -336,6 +366,18 @@ const styles = StyleSheet.create({
   },
   newChatText: {
     fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+  },
+  clearAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  clearAllText: {
+    fontSize: 12,
     fontFamily: 'Inter_500Medium',
   },
   sectionLabel: {
@@ -381,7 +423,13 @@ const styles = StyleSheet.create({
   },
   convActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 2,
     flexShrink: 0,
+  },
+  actionBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -56,6 +56,7 @@ interface ConversationContextType {
   handleDeleteChat: (id: string) => void;
   handleRenameChat: (id: string, title: string) => void;
   handleSendMessage: (text: string) => void;
+  clearAllHistory: () => void;
 }
 
 const ConversationContext = createContext<ConversationContextType | null>(null);
@@ -129,18 +130,19 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
     setDrawerOpen(false);
   }, []);
 
-  const handleDeleteChat = useCallback(
-    (id: string) => {
-      setConversations((prev) => {
-        const filtered = prev.filter((c) => c.id !== id);
-        if (activeId === id) {
-          setActiveId(filtered.length > 0 ? filtered[0].id : null);
+  const handleDeleteChat = useCallback((id: string) => {
+    setConversations((prev) => {
+      const filtered = prev.filter((c) => c.id !== id);
+      // Use functional form of setActiveId to read latest activeId safely
+      setActiveId((current) => {
+        if (current === id) {
+          return filtered.length > 0 ? filtered[0].id : null;
         }
-        return filtered;
+        return current;
       });
-    },
-    [activeId]
-  );
+      return filtered;
+    });
+  }, []);
 
   const handleRenameChat = useCallback((id: string, newTitle: string) => {
     const trimmed = newTitle.trim();
@@ -154,10 +156,11 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
     async (text: string) => {
       if (!text.trim()) return;
 
+      const trimmedText = text.trim();
       const userMsg: ChatMessage = {
         id: uid(),
         role: 'user',
-        text: text.trim(),
+        text: trimmedText,
         timestamp: Date.now(),
       };
       const modelMsg: ChatMessage = {
@@ -168,15 +171,14 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
       };
       const modelMsgId = modelMsg.id;
 
-      // Capture current active ID before async
+      // Append to the active conversation if one exists; otherwise create a new chat.
+      const currentConv = activeConversation;
       const currentActiveId = activeId;
-
-      if (!currentActiveId) {
-        // Create new conversation
+      if (!currentConv || !currentActiveId) {
         const newConvId = uid();
         const newConv: Conversation = {
           id: newConvId,
-          title: text.trim().slice(0, 40),
+          title: trimmedText.slice(0, 40),
           messages: [userMsg, modelMsg],
           createdAt: Date.now(),
         };
@@ -186,7 +188,7 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
         setConversations((prev) =>
           prev.map((c) => {
             if (c.id !== currentActiveId) return c;
-            const title = c.messages.length === 0 ? text.trim().slice(0, 40) : c.title;
+            const title = c.messages.length === 0 ? trimmedText.slice(0, 40) : c.title;
             return { ...c, title, messages: [...c.messages, userMsg, modelMsg] };
           })
         );
@@ -194,7 +196,7 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
 
       try {
         const result = await generateWithFailover({
-          prompt: text.trim(),
+          prompt: trimmedText,
           systemPrompt: SYSTEM_PROMPT,
         });
         if (!mountedRef.current) return;
@@ -220,8 +222,14 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
         );
       }
     },
-    [activeId]
+    [activeConversation, activeId]
   );
+
+  const clearAllHistory = useCallback(() => {
+    setConversations([]);
+    setActiveId(null);
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+  }, []);
 
   return (
     <ConversationContext.Provider
@@ -238,6 +246,7 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
         handleDeleteChat,
         handleRenameChat,
         handleSendMessage,
+        clearAllHistory,
       }}
     >
       {children}

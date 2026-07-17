@@ -29,6 +29,7 @@ export default function ChatScreen() {
     handleDeleteChat,
     handleRenameChat,
     handleSendMessage,
+    clearAllHistory,
   } = useConversations();
 
   const messages = activeConversation?.messages ?? [];
@@ -83,6 +84,7 @@ export default function ChatScreen() {
         onSelectChat={handleSelectChat}
         onDeleteChat={handleDeleteChat}
         onRenameChat={handleRenameChat}
+        onClearAll={clearAllHistory}
       />
     </View>
   );
