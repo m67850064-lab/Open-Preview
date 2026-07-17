@@ -239,18 +239,10 @@ function ConversationItem({
   };
 
   const handleDelete = () => {
-    if (Platform.OS === 'web') {
-      const ok = typeof window !== 'undefined' && window.confirm('Delete this conversation?');
-      if (ok) onDelete();
-    } else {
-      Alert.alert('Delete chat', 'Delete this conversation?', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: onDelete,
-        },
-      ]);
+    // Direct delete: no confirmation dialog
+    onDelete();
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     }
   };
 
