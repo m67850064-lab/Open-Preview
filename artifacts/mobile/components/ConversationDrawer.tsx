@@ -202,16 +202,7 @@ export function ConversationDrawer({
               conversation={item}
               isActive={item.id === activeId}
               onSelect={() => onSelectChat(item.id)}
-              onDelete={() => {
-                Alert.alert('Delete chat', 'Delete this conversation?', [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => onDeleteChat(item.id),
-                  },
-                ]);
-              }}
+              onDelete={() => onDeleteChat(item.id)}
               onRename={(title) => onRenameChat(item.id, title)}
             />
           )}
