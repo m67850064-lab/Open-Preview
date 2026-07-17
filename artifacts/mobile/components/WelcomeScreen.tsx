@@ -5,34 +5,73 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
+import Svg, {
+  Text as SvgText,
+  Defs,
+  LinearGradient,
+  Stop,
+} from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useColors } from '@/hooks/useColors';
-import { GeminiStar } from './GeminiStar';
 
-const SUGGESTION_CHIPS = [
-  { icon: 'code', label: 'Write code' },
-  { icon: 'book-open', label: 'Summarize text' },
-  { icon: 'image', label: 'Analyze image' },
-  { icon: 'edit-3', label: 'Help me write' },
-  { icon: 'cpu', label: 'Explain AI' },
-  { icon: 'globe', label: 'Translate' },
+const SAMPLE_PROMPTS = [
+  {
+    text: 'Explain quantum computing in simple terms',
+    icon: 'bulb-outline' as const,
+    lib: 'ionicons',
+  },
+  {
+    text: 'Write a poem about the ocean',
+    icon: 'create-outline' as const,
+    lib: 'ionicons',
+  },
+  {
+    text: 'Give me ideas for a weekend project',
+    icon: 'flask-outline' as const,
+    lib: 'ionicons',
+  },
+  {
+    text: 'What are the latest AI trends?',
+    icon: 'search-outline' as const,
+    lib: 'ionicons',
+  },
 ];
-
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
 
 interface WelcomeScreenProps {
   onPromptPress: (text: string) => void;
 }
 
+function GradientHello({ width }: { width: number }) {
+  return (
+    <Svg height={52} width={width}>
+      <Defs>
+        <LinearGradient id="helloGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <Stop offset="0%" stopColor="#4f7af8" />
+          <Stop offset="55%" stopColor="#7c3aed" />
+          <Stop offset="100%" stopColor="#8b5cf6" />
+        </LinearGradient>
+      </Defs>
+      <SvgText
+        fill="url(#helloGrad)"
+        fontSize="38"
+        fontWeight="bold"
+        x={width / 2}
+        y="44"
+        textAnchor="middle"
+      >
+        Hello, there!
+      </SvgText>
+    </Svg>
+  );
+}
+
 export function WelcomeScreen({ onPromptPress }: WelcomeScreenProps) {
   const colors = useColors();
+  const { width } = useWindowDimensions();
+  const contentWidth = width - 32; // 16px padding each side
 
   return (
     <ScrollView
@@ -40,73 +79,43 @@ export function WelcomeScreen({ onPromptPress }: WelcomeScreenProps) {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      {/* Large star logo */}
-      <View style={styles.logoArea}>
-        <GeminiStar size={56} />
-      </View>
-
-      {/* Greeting */}
+      {/* Gradient "Hello, there!" */}
       <View style={styles.greetingArea}>
-        <Text style={[styles.greeting, { color: colors.text }]}>
-          {getGreeting()}
-        </Text>
+        <GradientHello width={contentWidth} />
         <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-          How can I help you today?
+          What can I help you with today?
         </Text>
       </View>
 
-      {/* Suggestion chips */}
-      <View style={styles.chipsSection}>
-        <Text style={[styles.chipsLabel, { color: colors.textSubtle }]}>
-          Try asking
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
-          {SUGGESTION_CHIPS.map((chip, i) => (
-            <TouchableOpacity
-              key={i}
-              style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              onPress={() => onPromptPress(chip.label)}
-              activeOpacity={0.7}
-            >
-              <Feather name={chip.icon as any} size={14} color={colors.brand} />
-              <Text style={[styles.chipText, { color: colors.text }]}>{chip.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Feature cards */}
-      <View style={styles.cards}>
-        {[
-          {
-            title: 'Ask anything',
-            desc: 'Get answers, explanations and ideas',
-            icon: 'message-circle',
-          },
-          {
-            title: 'Create content',
-            desc: 'Write, edit and brainstorm with AI',
-            icon: 'edit-3',
-          },
-        ].map((card, i) => (
+      {/* 2×2 prompt card grid */}
+      <View style={styles.grid}>
+        {SAMPLE_PROMPTS.map((prompt, i) => (
           <TouchableOpacity
             key={i}
-            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={() => onPromptPress(card.title)}
-            activeOpacity={0.7}
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                width: (contentWidth - 12) / 2,
+              },
+            ]}
+            onPress={() => onPromptPress(prompt.text)}
+            activeOpacity={0.75}
           >
-            <View style={[styles.cardIconWrap, { backgroundColor: colors.surfaceHover }]}>
-              <Feather name={card.icon as any} size={18} color={colors.brand} />
+            <View style={[styles.cardIcon, { backgroundColor: colors.accent }]}>
+              <Ionicons
+                name={prompt.icon}
+                size={20}
+                color={colors.brand}
+              />
             </View>
-            <View style={styles.cardText}>
-              <Text style={[styles.cardTitle, { color: colors.text }]}>{card.title}</Text>
-              <Text style={[styles.cardDesc, { color: colors.textMuted }]}>{card.desc}</Text>
-            </View>
-            <Feather name="chevron-right" size={16} color={colors.textSubtle} />
+            <Text
+              style={[styles.cardText, { color: colors.text }]}
+              numberOfLines={3}
+            >
+              {prompt.text}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -117,90 +126,47 @@ export function WelcomeScreen({ onPromptPress }: WelcomeScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 32,
+    paddingHorizontal: 16,
+    paddingTop: 40,
     paddingBottom: 24,
-  },
-  logoArea: {
-    alignItems: 'center',
-    marginBottom: 24,
+    gap: 28,
   },
   greetingArea: {
     alignItems: 'center',
-    marginBottom: 36,
-    gap: 6,
-  },
-  greeting: {
-    fontSize: 28,
-    fontFamily: 'Inter_700Bold',
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
-  },
-  chipsSection: {
-    marginBottom: 24,
-    gap: 12,
-  },
-  chipsLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    paddingLeft: 2,
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingRight: 8,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontSize: 13,
-    fontFamily: 'Inter_500Medium',
-  },
-  cards: {
     gap: 10,
   },
-  card: {
+  subtitle: {
+    fontSize: 15,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+  },
+  grid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  card: {
     borderRadius: 16,
     borderWidth: 1,
+    padding: 16,
+    gap: 32,
+    // subtle shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  cardIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  cardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
   },
   cardText: {
-    flex: 1,
-    gap: 2,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  cardDesc: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: 'Inter_400Regular',
-    lineHeight: 17,
+    lineHeight: 19,
   },
 });

@@ -25,7 +25,7 @@ export function Header({ onMenuPress, onNewChat }: HeaderProps) {
         },
       ]}
     >
-      {/* Hamburger menu */}
+      {/* Hamburger */}
       <TouchableOpacity
         onPress={onMenuPress}
         style={styles.iconBtn}
@@ -34,22 +34,20 @@ export function Header({ onMenuPress, onNewChat }: HeaderProps) {
         <Feather name="menu" size={22} color={colors.textMuted} />
       </TouchableOpacity>
 
-      {/* Center brand */}
+      {/* Center: star + "Vertex AI" */}
       <View style={styles.brand}>
-        <GeminiStar size={22} />
-        <Text style={[styles.title, { color: colors.text }]}>Gemini</Text>
-        <View style={[styles.badge, { backgroundColor: colors.surfaceLight }]}>
-          <Text style={[styles.badgeText, { color: colors.textMuted }]}>AI</Text>
-        </View>
+        <GeminiStar size={20} />
+        <Text style={[styles.title, { color: colors.text }]}>Vertex AI</Text>
       </View>
 
-      {/* New chat */}
+      {/* New chat (compose icon) */}
       <TouchableOpacity
         onPress={onNewChat}
         style={styles.iconBtn}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Feather name="edit-2" size={20} color={colors.textMuted} />
+        {/* Square-with-arrow compose icon */}
+        <Feather name="edit" size={20} color={colors.textMuted} />
       </TouchableOpacity>
     </View>
   );
@@ -69,19 +67,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: 'Inter_600SemiBold',
-    letterSpacing: -0.3,
-  },
-  badge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontFamily: 'Inter_600SemiBold',
-    letterSpacing: 0.5,
+    letterSpacing: -0.2,
   },
   iconBtn: {
     width: 44,

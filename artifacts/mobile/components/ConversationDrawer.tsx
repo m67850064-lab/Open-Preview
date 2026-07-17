@@ -102,38 +102,45 @@ export function ConversationDrawer({
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
-      {/* Drawer panel */}
+      {/* Sidebar drawer — matches screenshot sidebar */}
       <Animated.View
         style={[
           styles.drawer,
           {
             width: DRAWER_WIDTH,
-            backgroundColor: colors.surface,
+            backgroundColor: colors.sidebar,
             transform: [{ translateX: slideAnim }],
             paddingTop: topPadding,
             paddingBottom: bottomPadding,
           },
         ]}
       >
-        {/* Header */}
+        {/* Header: star + Vertex AI */}
         <View style={styles.drawerHeader}>
           <View style={styles.brandRow}>
-            <GeminiStar size={22} />
-            <Text style={[styles.brandName, { color: colors.text }]}>Gemini</Text>
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.menuBtn}
+            >
+              <Feather name="menu" size={22} color={colors.textMuted} />
+            </TouchableOpacity>
+            <GeminiStar size={20} />
+            <Text style={[styles.brandName, { color: colors.text }]}>Vertex AI</Text>
           </View>
-          <TouchableOpacity
-            onPress={onClose}
-            style={styles.closeBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="x" size={20} color={colors.textMuted} />
-          </TouchableOpacity>
         </View>
 
-        {/* New chat button */}
+        {/* + New chat button */}
         <View style={styles.newChatWrapper}>
           <TouchableOpacity
-            style={[styles.newChatBtn, { backgroundColor: colors.surfaceHover }]}
+            style={[
+              styles.newChatBtn,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                shadowColor: '#000',
+              },
+            ]}
             onPress={() => {
               if (Platform.OS !== 'web') {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -142,16 +149,14 @@ export function ConversationDrawer({
             }}
             activeOpacity={0.75}
           >
-            <Feather name="plus" size={17} color={colors.text} />
+            <Feather name="plus" size={16} color={colors.text} />
             <Text style={[styles.newChatText, { color: colors.text }]}>New chat</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Section label */}
+        {/* RECENT label */}
         {conversations.length > 0 && (
-          <Text style={[styles.sectionLabel, { color: colors.textSubtle }]}>
-            Recent
-          </Text>
+          <Text style={[styles.sectionLabel, { color: colors.textSubtle }]}>RECENT</Text>
         )}
 
         {/* Conversations list */}
@@ -162,9 +167,8 @@ export function ConversationDrawer({
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Feather name="message-circle" size={22} color={colors.textSubtle} />
-              <Text style={[styles.emptyText, { color: colors.textSubtle }]}>
-                No chats yet
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                No conversations yet
               </Text>
             </View>
           }
@@ -227,13 +231,6 @@ function ConversationItem({
       onPress={editing ? undefined : onSelect}
       activeOpacity={0.7}
     >
-      <Feather
-        name="message-square"
-        size={14}
-        color={isActive ? colors.brand : colors.textSubtle}
-        style={styles.convIcon}
-      />
-
       {editing ? (
         <TextInput
           style={[styles.renameInput, { color: colors.text, borderColor: colors.brand }]}
@@ -266,7 +263,6 @@ function ConversationItem({
               setEditing(true);
             }}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            style={styles.actionBtn}
           >
             <Feather name="edit-3" size={12} color={colors.textSubtle} />
           </TouchableOpacity>
@@ -276,7 +272,6 @@ function ConversationItem({
               onDelete();
             }}
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            style={styles.actionBtn}
           >
             <Feather name="trash-2" size={12} color={colors.destructive} />
           </TouchableOpacity>
@@ -289,7 +284,7 @@ function ConversationItem({
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   drawer: {
     position: 'absolute',
@@ -297,16 +292,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     shadowColor: '#000',
-    shadowOffset: { width: 6, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 20,
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 16,
   },
   drawerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingBottom: 16,
   },
   brandRow: {
@@ -314,28 +306,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  brandName: {
-    fontSize: 17,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  closeBtn: {
+  menuBtn: {
     width: 36,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 18,
+  },
+  brandName: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
   },
   newChatWrapper: {
-    paddingHorizontal: 10,
-    paddingBottom: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 20,
   },
   newChatBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
+    gap: 8,
+    paddingHorizontal: 18,
     paddingVertical: 11,
-    borderRadius: 22,
+    borderRadius: 24,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 1,
   },
   newChatText: {
     fontSize: 14,
@@ -343,20 +340,18 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 11,
-    fontFamily: 'Inter_500Medium',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 0.8,
     paddingHorizontal: 18,
-    paddingBottom: 6,
+    paddingBottom: 8,
   },
   listContent: {
     paddingHorizontal: 8,
     paddingBottom: 16,
   },
   emptyState: {
-    alignItems: 'center',
-    paddingTop: 40,
-    gap: 8,
+    paddingHorizontal: 10,
+    paddingTop: 4,
   },
   emptyText: {
     fontSize: 13,
@@ -368,10 +363,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 10,
     borderRadius: 10,
-    gap: 10,
-  },
-  convIcon: {
-    flexShrink: 0,
+    gap: 8,
   },
   convTitle: {
     flex: 1,
@@ -389,10 +381,7 @@ const styles = StyleSheet.create({
   },
   convActions: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 8,
     flexShrink: 0,
-  },
-  actionBtn: {
-    padding: 4,
   },
 });

@@ -9,12 +9,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
-import { isVoiceSupported, startListening, stopListening, cancelListening } from '@/lib/voiceInput';
+import { isVoiceSupported, startListening, stopListening } from '@/lib/voiceInput';
 
 interface ChatInputProps {
   onSend: (text: string) => void;
@@ -31,14 +31,13 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
 
   const canSend = !!text.trim() && !disabled;
-  const bottomPadding = Platform.OS === 'web' ? 24 : Math.max(insets.bottom, 12);
+  const bottomPadding = Platform.OS === 'web' ? 16 : Math.max(insets.bottom, 12);
 
-  // Pulse animation when recording
   useEffect(() => {
     if (recording) {
       pulseLoop.current = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.3, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.25, duration: 600, useNativeDriver: true }),
           Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
         ])
       );
@@ -62,12 +61,11 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
 
   const handleMicPress = useCallback(async () => {
     if (!isVoiceSupported()) {
-      Alert.alert('Not supported', 'Voice input is not supported on this device.');
+      Alert.alert('Not supported', 'Voice input is not available on this device.');
       return;
     }
 
     if (recording) {
-      // Stop recording
       setRecording(false);
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -76,7 +74,6 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         setText((prev) => (prev ? prev + ' ' + transcript : transcript));
       });
     } else {
-      // Start recording
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       }
@@ -99,28 +96,22 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         { paddingBottom: bottomPadding, backgroundColor: colors.background },
       ]}
     >
-      {/* Input pill */}
+      {/* Input pill — matches screenshot exactly */}
       <View
         style={[
           styles.inputPill,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            shadowColor: '#000',
+          },
         ]}
       >
-        {/* + button */}
-        <TouchableOpacity
-          style={styles.sideBtn}
-          onPress={() => Alert.alert('Attach', 'Image & file support coming soon')}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Feather name="plus" size={20} color={colors.textMuted} />
-        </TouchableOpacity>
-
-        {/* Text input */}
         <TextInput
           ref={inputRef}
           style={[styles.input, { color: colors.text }]}
-          placeholder={recording ? 'Listening...' : 'Ask Gemini'}
-          placeholderTextColor={recording ? '#d96570' : colors.textMuted}
+          placeholder={recording ? 'Listening...' : 'Ask anything...'}
+          placeholderTextColor={recording ? '#ef4444' : colors.textMuted}
           value={text}
           onChangeText={setText}
           multiline
@@ -131,40 +122,44 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           editable={!recording}
         />
 
-        {/* Mic or Send button */}
-        {canSend ? (
+        {/* Mic button */}
+        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
           <TouchableOpacity
-            onPress={handleSend}
-            style={[styles.actionBtn, { backgroundColor: colors.brand }]}
-            activeOpacity={0.8}
+            onPress={handleMicPress}
+            style={styles.iconBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Feather name="arrow-up" size={18} color="#fff" />
+            <Ionicons
+              name={recording ? 'stop-circle' : 'mic-outline'}
+              size={22}
+              color={recording ? '#ef4444' : colors.textMuted}
+            />
           </TouchableOpacity>
-        ) : (
-          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-            <TouchableOpacity
-              onPress={handleMicPress}
-              style={[
-                styles.actionBtn,
-                {
-                  backgroundColor: recording ? '#d96570' : colors.surfaceHover,
-                },
-              ]}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name={recording ? 'stop' : 'mic'}
-                size={18}
-                color={recording ? '#fff' : colors.textMuted}
-              />
-            </TouchableOpacity>
-          </Animated.View>
-        )}
+        </Animated.View>
+
+        {/* Send / arrow-up button */}
+        <TouchableOpacity
+          onPress={handleSend}
+          disabled={!canSend}
+          style={[
+            styles.sendBtn,
+            {
+              backgroundColor: canSend ? colors.brand : colors.surfaceHover,
+            },
+          ]}
+          activeOpacity={0.8}
+        >
+          <Feather
+            name="arrow-up"
+            size={17}
+            color={canSend ? '#fff' : colors.textSubtle}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Disclaimer */}
       <Text style={[styles.disclaimer, { color: colors.textSubtle }]}>
-        Gemini can make mistakes. Check important info.
+        Vertex AI can make mistakes. Verify important information.
       </Text>
     </View>
   );
@@ -172,26 +167,23 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
+    paddingHorizontal: 16,
+    paddingTop: 10,
     gap: 8,
   },
   inputPill: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    borderRadius: 26,
+    borderRadius: 28,
     borderWidth: 1,
-    paddingHorizontal: 6,
+    paddingLeft: 20,
+    paddingRight: 6,
     paddingVertical: 6,
     gap: 4,
-  },
-  sideBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 18,
-    flexShrink: 0,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    elevation: 2,
   },
   input: {
     flex: 1,
@@ -201,12 +193,18 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     paddingTop: Platform.OS === 'android' ? 6 : 8,
     paddingBottom: Platform.OS === 'android' ? 6 : 8,
-    paddingHorizontal: 4,
   },
-  actionBtn: {
+  iconBtn: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  sendBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -215,6 +213,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: 'Inter_400Regular',
     textAlign: 'center',
-    paddingBottom: 2,
   },
 });

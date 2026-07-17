@@ -1,61 +1,62 @@
-// Gemini-style dark palette
-const darkPalette = {
-  // Core backgrounds — Gemini's deep charcoal
-  background: '#131314',
-  foreground: '#e3e3e3',
+// Vertex AI light palette — matches the web app screenshot
+const lightPalette = {
+  // Core backgrounds
+  background: '#eef2fb',       // very light blue-gray
+  foreground: '#1a1c2e',
 
   // Surfaces
-  surface: '#1e1f20',
-  surfaceHover: '#282a2c',
-  surfaceLight: '#3c4043',
+  surface: '#ffffff',           // white cards
+  surfaceHover: '#e3e9f7',
+  surfaceLight: '#d4dcf0',
+  sidebar: '#e3e9f6',           // sidebar/drawer bg
 
-  // Brand / Gemini gradient colors
-  primary: '#8ab4f8',
+  // Brand — Vertex AI blue & purple
+  primary: '#4285f4',
   primaryForeground: '#ffffff',
-  brand: '#8ab4f8',
-  brandLight: '#a8c7fa',
+  brand: '#4285f4',             // primary blue
+  brandPurple: '#7c3aed',       // gradient end
+  brandLight: '#6ba8ff',
 
-  // Gemini gradient
-  gradientStart: '#4285f4',
-  gradientMid: '#9b72cb',
-  gradientEnd: '#d96570',
+  // Gradient colors
+  gradientStart: '#4f7af8',
+  gradientEnd: '#8b5cf6',
 
   // Text
-  text: '#e3e3e3',
-  textMuted: '#9aa0a6',
-  textSubtle: '#5f6368',
+  text: '#1a1c2e',
+  textMuted: '#6b7280',
+  textSubtle: '#9ca3af',
 
   // Cards / elevated surfaces
-  card: '#1e1f20',
-  cardForeground: '#e3e3e3',
+  card: '#ffffff',
+  cardForeground: '#1a1c2e',
 
   // Secondary
-  secondary: '#282a2c',
-  secondaryForeground: '#c4c7c5',
+  secondary: '#f3f4f6',
+  secondaryForeground: '#374151',
 
   // Muted
-  muted: '#3c4043',
-  mutedForeground: '#9aa0a6',
+  muted: '#f3f4f6',
+  mutedForeground: '#9ca3af',
 
   // Accent
-  accent: '#282a2c',
-  accentForeground: '#e3e3e3',
+  accent: '#eff6ff',
+  accentForeground: '#1d4ed8',
 
   // Destructive
-  destructive: '#f28b82',
+  destructive: '#ef4444',
   destructiveForeground: '#ffffff',
 
   // Borders & inputs
-  border: '#3c4043',
-  input: '#282a2c',
+  border: '#d1dae8',
+  input: '#eef2fb',
 
   // Legacy aliases
-  tint: '#8ab4f8',
+  tint: '#4285f4',
 };
 
 const colors = {
-  light: darkPalette,
-  dark: darkPalette,
+  light: lightPalette,
+  dark: lightPalette,   // force light-only to match web app
   radius: 12,
 };
 

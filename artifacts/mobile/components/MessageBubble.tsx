@@ -19,7 +19,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isTyping = message.role === 'model' && message.text === '';
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(10)).current;
+  const slideAnim = useRef(new Animated.Value(8)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -29,7 +29,6 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   }, []);
 
   if (isUser) {
-    // User bubble: pill shape, right-aligned, dark bg
     return (
       <Animated.View
         style={[
@@ -37,14 +36,19 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         ]}
       >
-        <View style={[styles.userBubble, { backgroundColor: colors.surfaceHover }]}>
-          <Text style={[styles.userText, { color: colors.text }]}>{message.text}</Text>
+        <View
+          style={[
+            styles.userBubble,
+            { backgroundColor: colors.brand },
+          ]}
+        >
+          <Text style={styles.userText}>{message.text}</Text>
         </View>
       </Animated.View>
     );
   }
 
-  // Model response: no bubble, just text with Gemini star avatar
+  // Model: no bubble, Vertex star avatar + plain text
   return (
     <Animated.View
       style={[
@@ -52,11 +56,9 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
       ]}
     >
-      {/* Gemini star avatar */}
       <View style={styles.avatar}>
         <GeminiStar size={20} />
       </View>
-
       <View style={styles.modelContent}>
         {isTyping ? (
           <TypingDots />
@@ -71,7 +73,6 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 }
 
 function TypingDots() {
-  const colors = useColors();
   const dot1 = useRef(new Animated.Value(0.3)).current;
   const dot2 = useRef(new Animated.Value(0.3)).current;
   const dot3 = useRef(new Animated.Value(0.3)).current;
@@ -99,7 +100,7 @@ function TypingDots() {
       {([dot1, dot2, dot3] as Animated.Value[]).map((dot, i) => (
         <Animated.View
           key={i}
-          style={[styles.dot, { opacity: dot, backgroundColor: '#9b72cb' }]}
+          style={[styles.dot, { opacity: dot, backgroundColor: '#8b5cf6' }]}
         />
       ))}
     </View>
@@ -125,6 +126,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontFamily: 'Inter_400Regular',
+    color: '#ffffff',
   },
 
   // ── Model ──
@@ -149,7 +151,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
   },
 
-  // ── Typing dots ──
+  // ── Typing ──
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
