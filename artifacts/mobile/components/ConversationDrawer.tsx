@@ -17,9 +17,10 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
+import { GeminiStar } from './GeminiStar';
 import type { Conversation } from '@/context/ConversationContext';
 
-const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.82, 320);
+const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.82, 300);
 
 interface ConversationDrawerProps {
   visible: boolean;
@@ -45,18 +46,20 @@ export function ConversationDrawer({
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPadding = Platform.OS === 'web' ? 67 : insets.top;
-  const bottomPadding = Platform.OS === 'web' ? 34 : insets.bottom;
+  const bottomPadding = Platform.OS === 'web' ? 24 : insets.bottom;
 
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     if (visible) {
+      setMounted(true);
       Animated.parallel([
         Animated.spring(slideAnim, {
           toValue: 0,
-          damping: 24,
-          stiffness: 200,
+          damping: 20,
+          stiffness: 180,
           useNativeDriver: true,
         }),
         Animated.timing(overlayAnim, {
@@ -77,15 +80,15 @@ export function ConversationDrawer({
           duration: 200,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(() => setMounted(false));
     }
   }, [visible]);
 
-  if (!visible && slideAnim._value === -DRAWER_WIDTH) return null;
+  if (!mounted && !visible) return null;
 
   return (
     <Modal
-      visible={visible || slideAnim._value !== -DRAWER_WIDTH}
+      visible={mounted || visible}
       transparent
       animationType="none"
       onRequestClose={onClose}
@@ -115,16 +118,12 @@ export function ConversationDrawer({
         {/* Header */}
         <View style={styles.drawerHeader}>
           <View style={styles.brandRow}>
-            <View style={[styles.logoBox, { backgroundColor: colors.brand }]}>
-              <Feather name="layers" size={14} color="#fff" />
-            </View>
-            <View>
-              <Text style={[styles.brandName, { color: colors.text }]}>Vertex AI</Text>
-              <Text style={[styles.brandSub, { color: colors.textMuted }]}>Assistant</Text>
-            </View>
+            <GeminiStar size={22} />
+            <Text style={[styles.brandName, { color: colors.text }]}>Gemini</Text>
           </View>
           <TouchableOpacity
             onPress={onClose}
+            style={styles.closeBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Feather name="x" size={20} color={colors.textMuted} />
@@ -141,12 +140,19 @@ export function ConversationDrawer({
               }
               onNewChat();
             }}
-            activeOpacity={0.7}
+            activeOpacity={0.75}
           >
-            <Feather name="plus" size={18} color={colors.text} />
+            <Feather name="plus" size={17} color={colors.text} />
             <Text style={[styles.newChatText, { color: colors.text }]}>New chat</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Section label */}
+        {conversations.length > 0 && (
+          <Text style={[styles.sectionLabel, { color: colors.textSubtle }]}>
+            Recent
+          </Text>
+        )}
 
         {/* Conversations list */}
         <FlatList
@@ -156,9 +162,9 @@ export function ConversationDrawer({
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Feather name="message-circle" size={24} color={colors.textMuted} />
-              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                No conversations yet
+              <Feather name="message-circle" size={22} color={colors.textSubtle} />
+              <Text style={[styles.emptyText, { color: colors.textSubtle }]}>
+                No chats yet
               </Text>
             </View>
           }
@@ -168,7 +174,7 @@ export function ConversationDrawer({
               isActive={item.id === activeId}
               onSelect={() => onSelectChat(item.id)}
               onDelete={() => {
-                Alert.alert('Delete Chat', 'Are you sure you want to delete this chat?', [
+                Alert.alert('Delete chat', 'Delete this conversation?', [
                   { text: 'Cancel', style: 'cancel' },
                   {
                     text: 'Delete',
@@ -207,11 +213,8 @@ function ConversationItem({
 
   const handleSubmitRename = () => {
     const trimmed = editValue.trim();
-    if (trimmed) {
-      onRename(trimmed);
-    } else {
-      setEditValue(conversation.title);
-    }
+    if (trimmed) onRename(trimmed);
+    else setEditValue(conversation.title);
     setEditing(false);
   };
 
@@ -225,9 +228,9 @@ function ConversationItem({
       activeOpacity={0.7}
     >
       <Feather
-        name="message-circle"
-        size={15}
-        color={isActive ? colors.brand : colors.textMuted}
+        name="message-square"
+        size={14}
+        color={isActive ? colors.brand : colors.textSubtle}
         style={styles.convIcon}
       />
 
@@ -244,7 +247,10 @@ function ConversationItem({
         />
       ) : (
         <Text
-          style={[styles.convTitle, { color: isActive ? colors.text : colors.textMuted }]}
+          style={[
+            styles.convTitle,
+            { color: isActive ? colors.text : colors.textMuted },
+          ]}
           numberOfLines={1}
         >
           {conversation.title}
@@ -262,7 +268,7 @@ function ConversationItem({
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             style={styles.actionBtn}
           >
-            <Feather name="edit-3" size={13} color={colors.textMuted} />
+            <Feather name="edit-3" size={12} color={colors.textSubtle} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={(e) => {
@@ -272,7 +278,7 @@ function ConversationItem({
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             style={styles.actionBtn}
           >
-            <Feather name="trash-2" size={13} color={colors.destructive} />
+            <Feather name="trash-2" size={12} color={colors.destructive} />
           </TouchableOpacity>
         </View>
       )}
@@ -283,7 +289,7 @@ function ConversationItem({
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   drawer: {
     position: 'absolute',
@@ -291,43 +297,37 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     shadowColor: '#000',
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 16,
+    shadowOffset: { width: 6, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 20,
   },
   drawerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 16,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  logoBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+  brandName: {
+    fontSize: 17,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  brandName: {
-    fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
-    lineHeight: 20,
-  },
-  brandSub: {
-    fontSize: 11,
-    fontFamily: 'Inter_400Regular',
-    lineHeight: 14,
+    borderRadius: 18,
   },
   newChatWrapper: {
-    paddingHorizontal: 12,
-    paddingBottom: 8,
+    paddingHorizontal: 10,
+    paddingBottom: 12,
   },
   newChatBtn: {
     flexDirection: 'row',
@@ -335,11 +335,19 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 14,
     paddingVertical: 11,
-    borderRadius: 24,
+    borderRadius: 22,
   },
   newChatText: {
     fontSize: 14,
     fontFamily: 'Inter_500Medium',
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    paddingHorizontal: 18,
+    paddingBottom: 6,
   },
   listContent: {
     paddingHorizontal: 8,
@@ -347,7 +355,7 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingTop: 32,
+    paddingTop: 40,
     gap: 8,
   },
   emptyText: {
@@ -358,9 +366,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 11,
+    paddingVertical: 10,
     borderRadius: 10,
-    gap: 8,
+    gap: 10,
   },
   convIcon: {
     flexShrink: 0,

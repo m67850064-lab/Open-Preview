@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Vertex AI Mobile",
-    "slug": "mobile",
+    "name": "Vertex AI",
+    "slug": "vertexai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "vertexai",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -14,9 +14,12 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.vertexai.app"
     },
-    "android": {},
+    "android": {
+      "package": "com.vertexai.app"
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },

@@ -5,8 +5,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { GeminiStar } from './GeminiStar';
 import type { ChatMessage } from '@/context/ConversationContext';
 
 interface MessageBubbleProps {
@@ -19,46 +19,49 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isTyping = message.role === 'model' && message.text === '';
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(8)).current;
+  const slideAnim = useRef(new Animated.Value(10)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
     ]).start();
   }, []);
 
+  if (isUser) {
+    // User bubble: pill shape, right-aligned, dark bg
+    return (
+      <Animated.View
+        style={[
+          styles.userRow,
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+        ]}
+      >
+        <View style={[styles.userBubble, { backgroundColor: colors.surfaceHover }]}>
+          <Text style={[styles.userText, { color: colors.text }]}>{message.text}</Text>
+        </View>
+      </Animated.View>
+    );
+  }
+
+  // Model response: no bubble, just text with Gemini star avatar
   return (
     <Animated.View
       style={[
-        styles.row,
-        isUser ? styles.rowUser : styles.rowModel,
+        styles.modelRow,
         { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
       ]}
     >
-      {!isUser && (
-        <View style={[styles.avatar, { backgroundColor: colors.brand }]}>
-          <Feather name="layers" size={13} color="#fff" />
-        </View>
-      )}
+      {/* Gemini star avatar */}
+      <View style={styles.avatar}>
+        <GeminiStar size={20} />
+      </View>
 
-      <View
-        style={[
-          styles.bubble,
-          isUser
-            ? [styles.bubbleUser, { backgroundColor: colors.brand }]
-            : [styles.bubbleModel, { backgroundColor: colors.surface }],
-        ]}
-      >
+      <View style={styles.modelContent}>
         {isTyping ? (
           <TypingDots />
         ) : (
-          <Text
-            style={[
-              styles.text,
-              { color: isUser ? '#fff' : colors.text },
-            ]}
-          >
+          <Text style={[styles.modelText, { color: colors.text }]}>
             {message.text}
           </Text>
         )}
@@ -68,6 +71,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
 }
 
 function TypingDots() {
+  const colors = useColors();
   const dot1 = useRef(new Animated.Value(0.3)).current;
   const dot2 = useRef(new Animated.Value(0.3)).current;
   const dot3 = useRef(new Animated.Value(0.3)).current;
@@ -77,85 +81,84 @@ function TypingDots() {
       Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
-          Animated.timing(dot, { toValue: 1, duration: 300, useNativeDriver: true }),
-          Animated.timing(dot, { toValue: 0.3, duration: 300, useNativeDriver: true }),
-          Animated.delay(Math.max(0, 600 - delay)),
+          Animated.timing(dot, { toValue: 1, duration: 350, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0.3, duration: 350, useNativeDriver: true }),
+          Animated.delay(Math.max(0, 700 - delay)),
         ])
       );
 
     const a1 = pulse(dot1, 0);
     const a2 = pulse(dot2, 200);
     const a3 = pulse(dot3, 400);
-    a1.start();
-    a2.start();
-    a3.start();
-
-    return () => {
-      a1.stop();
-      a2.stop();
-      a3.stop();
-    };
+    a1.start(); a2.start(); a3.start();
+    return () => { a1.stop(); a2.stop(); a3.stop(); };
   }, []);
 
   return (
     <View style={styles.dotsRow}>
       {([dot1, dot2, dot3] as Animated.Value[]).map((dot, i) => (
-        <Animated.View key={i} style={[styles.dot, { opacity: dot }]} />
+        <Animated.View
+          key={i}
+          style={[styles.dot, { opacity: dot, backgroundColor: '#9b72cb' }]}
+        />
       ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
+  // ── User ──
+  userRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
     marginHorizontal: 16,
     marginVertical: 4,
-    gap: 8,
   },
-  rowUser: {
-    justifyContent: 'flex-end',
+  userBubble: {
+    maxWidth: '80%',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 22,
+    borderBottomRightRadius: 6,
   },
-  rowModel: {
-    justifyContent: 'flex-start',
-  },
-  avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  bubble: {
-    maxWidth: '78%',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  bubbleUser: {
-    borderRadius: 20,
-    borderBottomRightRadius: 4,
-  },
-  bubbleModel: {
-    borderRadius: 20,
-    borderBottomLeftRadius: 4,
-  },
-  text: {
+  userText: {
     fontSize: 15,
     lineHeight: 22,
     fontFamily: 'Inter_400Regular',
   },
+
+  // ── Model ──
+  modelRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    gap: 12,
+  },
+  avatar: {
+    marginTop: 2,
+    flexShrink: 0,
+  },
+  modelContent: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  modelText: {
+    fontSize: 15,
+    lineHeight: 24,
+    fontFamily: 'Inter_400Regular',
+  },
+
+  // ── Typing dots ──
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingVertical: 4,
+    paddingVertical: 6,
   },
   dot: {
-    width: 7,
-    height: 7,
+    width: 8,
+    height: 8,
     borderRadius: 4,
-    backgroundColor: '#a1a1aa',
   },
 });

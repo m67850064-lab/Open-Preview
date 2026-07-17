@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
+import { GeminiStar } from './GeminiStar';
 
 interface HeaderProps {
   onMenuPress: () => void;
@@ -21,10 +22,10 @@ export function Header({ onMenuPress, onNewChat }: HeaderProps) {
         {
           paddingTop: topPadding,
           backgroundColor: colors.background,
-          borderBottomColor: colors.border,
         },
       ]}
     >
+      {/* Hamburger menu */}
       <TouchableOpacity
         onPress={onMenuPress}
         style={styles.iconBtn}
@@ -33,17 +34,16 @@ export function Header({ onMenuPress, onNewChat }: HeaderProps) {
         <Feather name="menu" size={22} color={colors.textMuted} />
       </TouchableOpacity>
 
+      {/* Center brand */}
       <View style={styles.brand}>
-        <View style={[styles.logoBox, { backgroundColor: colors.brand }]}>
-          {/* Stacked layers icon */}
-          <Feather name="layers" size={14} color="#fff" />
-        </View>
-        <View>
-          <Text style={[styles.title, { color: colors.text }]}>Vertex AI</Text>
-          <Text style={[styles.subtitle, { color: colors.textMuted }]}>Assistant</Text>
+        <GeminiStar size={22} />
+        <Text style={[styles.title, { color: colors.text }]}>Gemini</Text>
+        <View style={[styles.badge, { backgroundColor: colors.surfaceLight }]}>
+          <Text style={[styles.badgeText, { color: colors.textMuted }]}>AI</Text>
         </View>
       </View>
 
+      {/* New chat */}
       <TouchableOpacity
         onPress={onNewChat}
         style={styles.iconBtn}
@@ -60,37 +60,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 8,
+    paddingBottom: 8,
   },
   brand: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  logoBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Inter_600SemiBold',
-    lineHeight: 20,
+    letterSpacing: -0.3,
   },
-  subtitle: {
-    fontSize: 11,
-    fontFamily: 'Inter_400Regular',
-    lineHeight: 14,
+  badge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 0.5,
   },
   iconBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
+    borderRadius: 22,
   },
 });
