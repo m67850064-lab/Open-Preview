@@ -247,18 +247,35 @@ function ConversationItem({
     setEditing(false);
   };
 
+  const handleDelete = () => {
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined' && window.confirm('Delete this conversation?');
+      if (ok) onDelete();
+    } else {
+      Alert.alert('Delete chat', 'Delete this conversation?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: onDelete,
+        },
+      ]);
+    }
+  };
+
   return (
-    <TouchableOpacity
+    <View
       style={[
-        styles.convItem,
+        styles.convRow,
         isActive && { backgroundColor: colors.surfaceHover },
       ]}
-      onPress={editing ? undefined : onSelect}
-      activeOpacity={0.7}
     >
       {editing ? (
         <TextInput
-          style={[styles.renameInput, { color: colors.text, borderColor: colors.brand }]}
+          style={[
+            styles.renameInput,
+            { color: colors.text, borderColor: colors.brand },
+          ]}
           value={editValue}
           onChangeText={setEditValue}
           onBlur={handleSubmitRename}
@@ -268,43 +285,45 @@ function ConversationItem({
           returnKeyType="done"
         />
       ) : (
-        <Text
-          style={[
-            styles.convTitle,
-            { color: isActive ? colors.text : colors.textMuted },
-          ]}
-          numberOfLines={1}
+        <TouchableOpacity
+          style={styles.convTextArea}
+          onPress={onSelect}
+          activeOpacity={0.7}
         >
-          {conversation.title}
-        </Text>
+          <Text
+            style={[
+              styles.convTitle,
+              { color: isActive ? colors.text : colors.textMuted },
+            ]}
+            numberOfLines={1}
+          >
+            {conversation.title}
+          </Text>
+        </TouchableOpacity>
       )}
 
       {!editing && (
         <View style={styles.convActions}>
           <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
+            onPress={() => {
               setEditValue(conversation.title);
               setEditing(true);
             }}
             style={styles.actionBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Feather name="edit-3" size={14} color={colors.textSubtle} />
+            <Feather name="edit-3" size={15} color={colors.textSubtle} />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
+            onPress={handleDelete}
             style={styles.actionBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Feather name="trash-2" size={14} color={colors.destructive} />
+            <Feather name="trash-2" size={15} color={colors.destructive} />
           </TouchableOpacity>
         </View>
       )}
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -399,16 +418,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
   },
-  convItem: {
+  convRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 10,
-    gap: 8,
+  },
+  convTextArea: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
   },
   convTitle: {
-    flex: 1,
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
   },
@@ -420,15 +442,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
+    marginVertical: 4,
   },
   convActions: {
     flexDirection: 'row',
-    gap: 2,
+    gap: 4,
     flexShrink: 0,
   },
   actionBtn: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
