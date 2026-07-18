@@ -1,13 +1,12 @@
-kind = "mobile"
+kind = "web"
 previewPath = "/"
 title = "Vertex AI Mobile"
 version = "1.0.0"
 id = "artifacts/mobile"
-router = "expo-domain"
+router = "web"
 
 [[services]]
-name = "expo"
-ensurePreviewReachable = "/status"
+name = "web"
 paths = [ "/" ]
 localPort = 18115
 
@@ -21,4 +20,3 @@ run = [ "pnpm", "--filter", "@workspace/mobile", "run", "serve" ]
 [services.env]
 PORT = "18115"
 BASE_PATH = "/"
-REPLIT_EXPO_DEV_DOMAIN = "$REPLIT_DEV_DOMAIN"
