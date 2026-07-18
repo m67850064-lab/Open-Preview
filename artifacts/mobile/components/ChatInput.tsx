@@ -212,38 +212,42 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
         style={[
           styles.menu,
           {
-            height: menuHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 46] }),
+            height: menuHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 106] }),
             opacity: menuAnim,
             transform: [{ translateY: menuTranslateY }],
           },
         ]}
       >
-        <TouchableOpacity
-          onPress={handleDocumentUpload}
-          style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          activeOpacity={0.7}
-        >
-          <Feather name="file-text" size={16} color={colors.brand} />
-          <Text style={[styles.menuBtnText, { color: colors.text }]}>Document</Text>
-        </TouchableOpacity>
+        <View style={styles.menuRow}>
+          <TouchableOpacity
+            onPress={handleDocumentUpload}
+            style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            activeOpacity={0.7}
+          >
+            <Feather name="file-text" size={16} color={colors.brand} />
+            <Text style={[styles.menuBtnText, { color: colors.text }]}>Document</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={handleImageUpload}
-          style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          activeOpacity={0.7}
-        >
-          <Feather name="image" size={16} color={colors.brand} />
-          <Text style={[styles.menuBtnText, { color: colors.text }]}>Gallery</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleImageUpload}
+            style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            activeOpacity={0.7}
+          >
+            <Feather name="image" size={16} color={colors.brand} />
+            <Text style={[styles.menuBtnText, { color: colors.text }]}>Gallery</Text>
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity
-          onPress={handleCameraCapture}
-          style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          activeOpacity={0.7}
-        >
-          <Feather name="camera" size={16} color={colors.brand} />
-          <Text style={[styles.menuBtnText, { color: colors.text }]}>Camera</Text>
-        </TouchableOpacity>
+        <View style={styles.menuRow}>
+          <TouchableOpacity
+            onPress={handleCameraCapture}
+            style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            activeOpacity={0.7}
+          >
+            <Feather name="camera" size={16} color={colors.brand} />
+            <Text style={[styles.menuBtnText, { color: colors.text }]}>Camera</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
 
       {/* Input pill */}
@@ -372,9 +376,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menu: {
+    gap: 8,
+    overflow: 'hidden',
+  },
+  menuRow: {
     flexDirection: 'row',
     gap: 10,
-    overflow: 'hidden',
   },
   menuBtn: {
     flexDirection: 'row',

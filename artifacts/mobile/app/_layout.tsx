@@ -11,6 +11,9 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
+// Explicitly pre-load vector-icon fonts so they render on all Android devices
+import { Feather } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { ConversationProvider } from '@/context/ConversationContext';
@@ -39,6 +42,9 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    // Pre-load icon fonts — prevents ☒ boxes on Android
+    ...Feather.font,
+    ...Ionicons.font,
   });
 
   useEffect(() => {
