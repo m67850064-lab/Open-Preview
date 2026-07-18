@@ -8,6 +8,8 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateWithFailover } from '@/lib/failover';
+import { sendToBackend } from '@/lib/chatApi';
+import type { ChatAttachment } from '@/lib/fileUpload';
 
 const STORAGE_KEY = 'vertex-ai-conversations';
 
@@ -16,7 +18,8 @@ const SYSTEM_PROMPT =
   'Reply directly and naturally in the same language the user speaks — ' +
   'whether that is English, Hindi, Roman Urdu, or any other language. ' +
   'Be concise, clear, and conversational. Do not echo or repeat the user\'s ' +
-  'question back. Just answer helpfully.';
+  'question back. Just answer helpfully. When a file is shared, describe or ' +
+  'answer based on what you see in it.';
 
 export const SAMPLE_PROMPTS = [
   'Explain quantum computing in simple terms',
@@ -34,6 +37,7 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   timestamp: number;
+  attachment?: ChatAttachment;
 }
 
 export interface Conversation {
@@ -55,7 +59,7 @@ interface ConversationContextType {
   handleSelectChat: (id: string) => void;
   handleDeleteChat: (id: string) => void;
   handleRenameChat: (id: string, title: string) => void;
-  handleSendMessage: (text: string) => void;
+  handleSendMessage: (text: string, attachment?: ChatAttachment) => void;
   clearAllHistory: () => void;
 }
 
@@ -133,7 +137,6 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
   const handleDeleteChat = useCallback((id: string) => {
     setConversations((prev) => {
       const filtered = prev.filter((c) => c.id !== id);
-      // Use functional form of setActiveId to read latest activeId safely
       setActiveId((current) => {
         if (current === id) {
           return filtered.length > 0 ? filtered[0].id : null;
@@ -153,8 +156,8 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const handleSendMessage = useCallback(
-    async (text: string) => {
-      if (!text.trim()) return;
+    async (text: string, attachment?: ChatAttachment) => {
+      if (!text.trim() && !attachment) return;
 
       const trimmedText = text.trim();
       const userMsg: ChatMessage = {
@@ -162,6 +165,7 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
         role: 'user',
         text: trimmedText,
         timestamp: Date.now(),
+        attachment,
       };
       const modelMsg: ChatMessage = {
         id: uid(),
@@ -171,14 +175,13 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
       };
       const modelMsgId = modelMsg.id;
 
-      // Append to the active conversation if one exists; otherwise create a new chat.
       const currentConv = activeConversation;
       const currentActiveId = activeId;
       if (!currentConv || !currentActiveId) {
         const newConvId = uid();
         const newConv: Conversation = {
           id: newConvId,
-          title: trimmedText.slice(0, 40),
+          title: trimmedText.slice(0, 40) || attachment?.name || 'New chat',
           messages: [userMsg, modelMsg],
           createdAt: Date.now(),
         };
@@ -188,17 +191,23 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
         setConversations((prev) =>
           prev.map((c) => {
             if (c.id !== currentActiveId) return c;
-            const title = c.messages.length === 0 ? trimmedText.slice(0, 40) : c.title;
+            const title = c.messages.length === 0 ? trimmedText.slice(0, 40) || attachment?.name || 'New chat' : c.title;
             return { ...c, title, messages: [...c.messages, userMsg, modelMsg] };
           })
         );
       }
 
       try {
-        const result = await generateWithFailover({
-          prompt: trimmedText,
-          systemPrompt: SYSTEM_PROMPT,
-        });
+        let result: { text: string; provider?: string };
+        if (attachment) {
+          result = await sendToBackend({ text: trimmedText, attachment });
+        } else {
+          const failover = await generateWithFailover({
+            prompt: trimmedText,
+            systemPrompt: SYSTEM_PROMPT,
+          });
+          result = failover;
+        }
         if (!mountedRef.current) return;
         setConversations((prev) =>
           prev.map((c) => ({
@@ -211,7 +220,7 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
       } catch (err) {
         if (!mountedRef.current) return;
         const errMsg =
-          "Sorry, I couldn't reach any AI providers. Please check your API keys and try again.";
+          err instanceof Error ? err.message : "Sorry, I couldn't process your request. Please try again.";
         setConversations((prev) =>
           prev.map((c) => ({
             ...c,

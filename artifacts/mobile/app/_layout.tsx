@@ -14,6 +14,7 @@ import {
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { ConversationProvider } from '@/context/ConversationContext';
+import { ThemeProvider } from '@/context/ThemeContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -22,11 +23,13 @@ const queryClient = new QueryClient();
 
 function RootLayoutNav() {
   return (
-    <ConversationProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      </Stack>
-    </ConversationProvider>
+    <ThemeProvider>
+      <ConversationProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        </Stack>
+      </ConversationProvider>
+    </ThemeProvider>
   );
 }
 

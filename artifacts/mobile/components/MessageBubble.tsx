@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
+  Image,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { GeminiStar } from './GeminiStar';
 import type { ChatMessage } from '@/context/ConversationContext';
@@ -39,10 +41,28 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         <View
           style={[
             styles.userBubble,
-            { backgroundColor: colors.brand },
+            { backgroundColor: colors.userBubble },
           ]}
         >
-          <Text style={styles.userText}>{message.text}</Text>
+          {message.attachment && (
+            <View style={styles.userAttachment}>
+              {message.attachment.type === 'image' ? (
+                <Image source={{ uri: message.attachment.uri }} style={styles.userAttachmentImage} />
+              ) : (
+                <View style={[styles.userAttachmentDoc, { backgroundColor: colors.accent }]}>
+                  <Feather name="file-text" size={16} color={colors.brand} />
+                  <Text style={[styles.userAttachmentDocText, { color: colors.text }]} numberOfLines={1}>
+                    {message.attachment.name}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+          {!!message.text && (
+            <Text style={[styles.userText, { color: colors.userBubbleText }]}>
+              {message.text}
+            </Text>
+          )}
         </View>
       </Animated.View>
     );
@@ -126,7 +146,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     fontFamily: 'Inter_400Regular',
-    color: '#ffffff',
+  },
+  userAttachment: {
+    marginBottom: 8,
+  },
+  userAttachmentImage: {
+    width: 180,
+    height: 180,
+    borderRadius: 14,
+    backgroundColor: '#000',
+  },
+  userAttachmentDoc: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    maxWidth: 240,
+  },
+  userAttachmentDocText: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    flex: 1,
   },
 
   // ── Model ──

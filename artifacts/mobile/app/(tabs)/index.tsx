@@ -59,17 +59,19 @@ export default function ChatScreen() {
         {isEmpty ? (
           <WelcomeScreen onPromptPress={handleSendMessage} />
         ) : (
-          <FlatList
-            data={reversedMessages}
-            keyExtractor={keyExtractor}
-            renderItem={renderItem}
-            inverted
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            keyboardDismissMode="interactive"
-            keyboardShouldPersistTaps="handled"
-            scrollEnabled
-          />
+          <View style={styles.chatContainer}>
+            <FlatList
+              data={reversedMessages}
+              keyExtractor={keyExtractor}
+              renderItem={renderItem}
+              inverted
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              keyboardDismissMode="interactive"
+              keyboardShouldPersistTaps="handled"
+              scrollEnabled
+            />
+          </View>
         )}
 
         <ChatInput onSend={handleSendMessage} disabled={hasTyping} />
@@ -96,6 +98,12 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  chatContainer: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
   },
   listContent: {
     paddingVertical: 16,

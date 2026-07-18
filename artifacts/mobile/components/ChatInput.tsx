@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
+  Image,
   Platform,
   StyleSheet,
   Text,
@@ -15,22 +16,27 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { isVoiceSupported, startListening, stopListening } from '@/lib/voiceInput';
+import { pickDocument, pickImage, showFileError, type ChatAttachment } from '@/lib/fileUpload';
 
 interface ChatInputProps {
-  onSend: (text: string) => void;
+  onSend: (text: string, attachment?: ChatAttachment) => void;
   disabled?: boolean;
 }
 
 export function ChatInput({ onSend, disabled }: ChatInputProps) {
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
+  const [attachment, setAttachment] = useState<ChatAttachment | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
+  const menuAnim = useRef(new Animated.Value(0)).current;
+  const menuHeight = useRef(new Animated.Value(0)).current;
 
-  const canSend = !!text.trim() && !disabled;
+  const canSend = (!!text.trim() || !!attachment) && !disabled;
   const bottomPadding = Platform.OS === 'web' ? 16 : Math.max(insets.bottom, 12);
 
   useEffect(() => {
@@ -49,15 +55,33 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     return () => { pulseLoop.current?.stop(); };
   }, [recording]);
 
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(menuAnim, {
+        toValue: menuOpen ? 1 : 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(menuHeight, {
+        toValue: menuOpen ? 1 : 0,
+        duration: 220,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [menuOpen]);
+
   const handleSend = useCallback(() => {
     if (!canSend) return;
     const trimmed = text.trim();
     setText('');
+    const file = attachment;
+    setAttachment(null);
+    setMenuOpen(false);
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
-    onSend(trimmed);
-  }, [canSend, text, onSend]);
+    onSend(trimmed, file ?? undefined);
+  }, [canSend, text, attachment, onSend]);
 
   const handleMicPress = useCallback(async () => {
     if (!isVoiceSupported()) {
@@ -89,6 +113,40 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
   }, [recording]);
 
+  const handlePlusPress = () => {
+    setMenuOpen((prev) => !prev);
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+  };
+
+  const handleDocumentUpload = async () => {
+    try {
+      const file = await pickDocument();
+      if (file) setAttachment(file);
+    } catch (err) {
+      showFileError(err);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    try {
+      const file = await pickImage();
+      if (file) setAttachment(file);
+    } catch (err) {
+      showFileError(err);
+    }
+  };
+
+  const clearAttachment = () => {
+    setAttachment(null);
+  };
+
+  const menuTranslateY = menuAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [12, 0],
+  });
+
   return (
     <View
       style={[
@@ -96,7 +154,56 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         { paddingBottom: bottomPadding, backgroundColor: colors.background },
       ]}
     >
-      {/* Input pill — matches screenshot exactly */}
+      {/* Attachment preview */}
+      {attachment && (
+        <View style={[styles.previewRow, { backgroundColor: colors.surface }]}>
+          {attachment.type === 'image' ? (
+            <Image source={{ uri: attachment.uri }} style={styles.previewThumb} />
+          ) : (
+            <View style={[styles.previewIcon, { backgroundColor: colors.accent }]}>
+              <Feather name="file-text" size={18} color={colors.brand} />
+            </View>
+          )}
+          <Text style={[styles.previewName, { color: colors.text }]} numberOfLines={1}>
+            {attachment.name}
+          </Text>
+          <TouchableOpacity onPress={clearAttachment} style={styles.clearAttachmentBtn}>
+            <Feather name="x" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Upload toggle menu */}
+      <Animated.View
+        style={[
+          styles.menu,
+          {
+            height: menuHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 46] }),
+            opacity: menuAnim,
+            transform: [{ translateY: menuTranslateY }],
+          },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={handleDocumentUpload}
+          style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          activeOpacity={0.7}
+        >
+          <Feather name="file-text" size={16} color={colors.brand} />
+          <Text style={[styles.menuBtnText, { color: colors.text }]}>Document Upload</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleImageUpload}
+          style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          activeOpacity={0.7}
+        >
+          <Feather name="image" size={16} color={colors.brand} />
+          <Text style={[styles.menuBtnText, { color: colors.text }]}>Image Upload</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Input pill */}
       <View
         style={[
           styles.inputPill,
@@ -107,6 +214,17 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           },
         ]}
       >
+        {/* Plus toggle on the left side */}
+        <TouchableOpacity
+          onPress={handlePlusPress}
+          style={styles.iconBtn}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Animated.View style={{ transform: [{ rotate: menuOpen ? '45deg' : '0deg' }] }}>
+            <Feather name="plus" size={22} color={colors.textMuted} />
+          </Animated.View>
+        </TouchableOpacity>
+
         <TextInput
           ref={inputRef}
           style={[styles.input, { color: colors.text }]}
@@ -137,23 +255,17 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Send / arrow-up button */}
+        {/* Send button */}
         <TouchableOpacity
           onPress={handleSend}
           disabled={!canSend}
           style={[
             styles.sendBtn,
-            {
-              backgroundColor: canSend ? colors.brand : colors.surfaceHover,
-            },
+            { backgroundColor: canSend ? colors.brand : colors.surfaceHover },
           ]}
           activeOpacity={0.8}
         >
-          <Feather
-            name="arrow-up"
-            size={17}
-            color={canSend ? '#fff' : colors.textSubtle}
-          />
+          <Feather name="arrow-up" size={17} color={canSend ? '#fff' : colors.textSubtle} />
         </TouchableOpacity>
       </View>
 
@@ -171,15 +283,69 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     gap: 8,
   },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    padding: 8,
+    gap: 10,
+  },
+  previewThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#000',
+  },
+  previewIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewName: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+  },
+  clearAttachmentBtn: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menu: {
+    flexDirection: 'row',
+    gap: 10,
+    overflow: 'hidden',
+  },
+  menuBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  menuBtnText: {
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+  },
   inputPill: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     borderRadius: 28,
     borderWidth: 1,
-    paddingLeft: 20,
+    paddingLeft: 6,
     paddingRight: 6,
     paddingVertical: 6,
-    gap: 4,
+    gap: 2,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.07,
     shadowRadius: 4,
@@ -193,6 +359,7 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     paddingTop: Platform.OS === 'android' ? 6 : 8,
     paddingBottom: Platform.OS === 'android' ? 6 : 8,
+    paddingHorizontal: 4,
   },
   iconBtn: {
     width: 36,
