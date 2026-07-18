@@ -11,6 +11,9 @@ import {
   Inter_700Bold,
   useFonts,
 } from '@expo-google-fonts/inter';
+// Import icon sets so their .font asset references are resolved by Metro
+import Feather from '@expo/vector-icons/Feather';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { ConversationProvider } from '@/context/ConversationContext';
@@ -39,9 +42,11 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
-    // Icon fonts — family names MUST be lowercase to match @expo/vector-icons v15
-    'feather': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Feather.ttf'),
-    'ionicons': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
+    // Spread the exact Metro asset refs that the icon components use internally.
+    // Feather.font  → { feather: <Feather.ttf asset> }
+    // Ionicons.font → { ionicons: <Ionicons.ttf asset> }
+    ...Feather.font,
+    ...Ionicons.font,
   });
 
   useEffect(() => {
@@ -50,6 +55,7 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+  // Hold the splash until ALL fonts (including icons) are ready
   if (!fontsLoaded && !fontError) return null;
 
   return (
