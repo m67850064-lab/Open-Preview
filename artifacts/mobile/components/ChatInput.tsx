@@ -16,7 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { isVoiceSupported, startListening, cancelListening } from '@/lib/voiceInput';
-import { pickDocument, pickImage, showFileError, type ChatAttachment } from '@/lib/fileUpload';
+import { pickDocument, pickImage, takePhoto, showFileError, type ChatAttachment } from '@/lib/fileUpload';
 
 interface ChatInputProps {
   onSend: (text: string, attachment?: ChatAttachment) => void;
@@ -162,6 +162,16 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
     }
   };
 
+  const handleCameraCapture = async () => {
+    setMenuOpen(false);
+    try {
+      const file = await takePhoto();
+      if (file) setAttachment(file);
+    } catch (err) {
+      showFileError(err);
+    }
+  };
+
   const clearAttachment = () => {
     setAttachment(null);
   };
@@ -214,7 +224,7 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
           activeOpacity={0.7}
         >
           <Feather name="file-text" size={16} color={colors.brand} />
-          <Text style={[styles.menuBtnText, { color: colors.text }]}>Document Upload</Text>
+          <Text style={[styles.menuBtnText, { color: colors.text }]}>Document</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -223,7 +233,16 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
           activeOpacity={0.7}
         >
           <Feather name="image" size={16} color={colors.brand} />
-          <Text style={[styles.menuBtnText, { color: colors.text }]}>Image Upload</Text>
+          <Text style={[styles.menuBtnText, { color: colors.text }]}>Gallery</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleCameraCapture}
+          style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          activeOpacity={0.7}
+        >
+          <Feather name="camera" size={16} color={colors.brand} />
+          <Text style={[styles.menuBtnText, { color: colors.text }]}>Camera</Text>
         </TouchableOpacity>
       </Animated.View>
 

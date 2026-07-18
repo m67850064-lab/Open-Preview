@@ -40,7 +40,7 @@ router.post("/gemini", upload.single("file"), async (req: Request, res: Response
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const fileManager = new GoogleAIFileManager(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
     const parts: Part[] = [];
 

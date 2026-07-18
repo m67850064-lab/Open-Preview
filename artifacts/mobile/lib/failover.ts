@@ -18,7 +18,7 @@ export interface GenerateResult {
   provider: string;
 }
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-2.0-flash-lite';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const MISTRAL_MODEL = 'mistral-small-latest';
 const OPENROUTER_MODEL = 'openai/gpt-4o-mini';
@@ -82,15 +82,17 @@ async function callOpenAICompatible(
 
 const CHAIN: Provider[] = [
   {
-    name: 'Gemini',
-    getKey: () => process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '',
-    generate: (opts, key) => callGemini(opts, key),
-  },
-  {
+    // Groq is first — fastest inference (~200ms typical)
     name: 'Groq',
     getKey: () => process.env.EXPO_PUBLIC_GROQ_API_KEY ?? '',
     generate: (opts, key) =>
       callOpenAICompatible('https://api.groq.com/openai/v1/chat/completions', GROQ_MODEL, opts, key),
+  },
+  {
+    // Gemini 2.0 Flash Lite — fast fallback
+    name: 'Gemini',
+    getKey: () => process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '',
+    generate: (opts, key) => callGemini(opts, key),
   },
   {
     name: 'Mistral',

@@ -56,15 +56,45 @@ export async function pickImage(): Promise<ChatAttachment | null> {
 
   validateSize(asset.fileSize);
 
-  const uri = asset.uri;
-  const fileName = asset.fileName || 'image';
-  const mimeType = asset.mimeType || 'image/jpeg';
+  return {
+    uri: asset.uri,
+    name: asset.fileName || 'image.jpg',
+    type: 'image',
+    mimeType: asset.mimeType || 'image/jpeg',
+    size: asset.fileSize || 0,
+  };
+}
+
+export async function takePhoto(): Promise<ChatAttachment | null> {
+  // Request camera permission
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== 'granted') {
+    if (Platform.OS === 'web') {
+      window.alert('Camera permission is required to take a photo.');
+    } else {
+      Alert.alert('Permission required', 'Camera access is needed to take a photo.');
+    }
+    return null;
+  }
+
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: false,
+    quality: 0.9,
+  });
+
+  if (result.canceled) return null;
+
+  const asset = result.assets?.[0];
+  if (!asset) return null;
+
+  validateSize(asset.fileSize);
 
   return {
-    uri,
-    name: fileName,
+    uri: asset.uri,
+    name: asset.fileName || `photo_${Date.now()}.jpg`,
     type: 'image',
-    mimeType,
+    mimeType: asset.mimeType || 'image/jpeg',
     size: asset.fileSize || 0,
   };
 }
