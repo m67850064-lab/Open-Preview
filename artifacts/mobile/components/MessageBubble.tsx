@@ -1,11 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Image,
+  Platform,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 import { GeminiStar } from './GeminiStar';
@@ -68,7 +72,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     );
   }
 
-  // Model: no bubble, Vertex star avatar + plain text
+  // Model response
   return (
     <Animated.View
       style={[
@@ -83,14 +87,103 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         {isTyping ? (
           <TypingDots />
         ) : (
-          <Text style={[styles.modelText, { color: colors.text }]}>
-            {message.text}
-          </Text>
+          <>
+            <Text style={[styles.modelText, { color: colors.text }]}>
+              {message.text}
+            </Text>
+            <ResponseActions text={message.text} />
+          </>
         )}
       </View>
     </Animated.View>
   );
 }
+
+// ── Response action buttons ──────────────────────────────────────────────────
+
+interface ResponseActionsProps {
+  text: string;
+}
+
+function ResponseActions({ text }: ResponseActionsProps) {
+  const colors = useColors();
+  const [copied, setCopied] = useState(false);
+  const [liked, setLiked] = useState<'like' | 'dislike' | null>(null);
+
+  const haptic = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+  };
+
+  const handleCopy = async () => {
+    await Clipboard.setStringAsync(text);
+    haptic();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleLike = () => {
+    haptic();
+    setLiked((prev) => (prev === 'like' ? null : 'like'));
+  };
+
+  const handleDislike = () => {
+    haptic();
+    setLiked((prev) => (prev === 'dislike' ? null : 'dislike'));
+  };
+
+  return (
+    <View style={styles.actionsRow}>
+      {/* Copy */}
+      <TouchableOpacity
+        onPress={handleCopy}
+        style={styles.actionBtn}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        activeOpacity={0.65}
+      >
+        <Feather
+          name={copied ? 'check' : 'copy'}
+          size={15}
+          color={copied ? colors.brand : colors.textSubtle}
+        />
+        {copied && (
+          <Text style={[styles.copiedLabel, { color: colors.brand }]}>Copied!</Text>
+        )}
+      </TouchableOpacity>
+
+      {/* Like */}
+      <TouchableOpacity
+        onPress={handleLike}
+        style={styles.actionBtn}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        activeOpacity={0.65}
+      >
+        <Feather
+          name="thumbs-up"
+          size={15}
+          color={liked === 'like' ? colors.brand : colors.textSubtle}
+        />
+      </TouchableOpacity>
+
+      {/* Dislike */}
+      <TouchableOpacity
+        onPress={handleDislike}
+        style={styles.actionBtn}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        activeOpacity={0.65}
+      >
+        <Feather
+          name="thumbs-down"
+          size={15}
+          color={liked === 'dislike' ? '#ef4444' : colors.textSubtle}
+        />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ── Typing dots ──────────────────────────────────────────────────────────────
 
 function TypingDots() {
   const dot1 = useRef(new Animated.Value(0.3)).current;
@@ -127,8 +220,10 @@ function TypingDots() {
   );
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  // ── User ──
+  // User
   userRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -171,7 +266,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // ── Model ──
+  // Model
   modelRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -193,7 +288,27 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
   },
 
-  // ── Typing ──
+  // Action buttons
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  copiedLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+  },
+
+  // Typing
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',

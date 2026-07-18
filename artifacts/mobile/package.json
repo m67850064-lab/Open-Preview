@@ -57,6 +57,7 @@
   },
   "dependencies": {
     "expo-av": "~15.0.2",
+    "expo-clipboard": "^57.0.1",
     "expo-document-picker": "^14.0.8"
   }
 }
