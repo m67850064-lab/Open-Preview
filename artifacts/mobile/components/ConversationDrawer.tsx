@@ -62,12 +62,12 @@ export function ConversationDrawer({
           toValue: 0,
           damping: 20,
           stiffness: 180,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(overlayAnim, {
           toValue: 1,
           duration: 200,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]).start();
     } else {
@@ -75,12 +75,12 @@ export function ConversationDrawer({
         Animated.timing(slideAnim, {
           toValue: -DRAWER_WIDTH,
           duration: 220,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(overlayAnim, {
           toValue: 0,
           duration: 200,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]).start(() => setMounted(false));
     }
