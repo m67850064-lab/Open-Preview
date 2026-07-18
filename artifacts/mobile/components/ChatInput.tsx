@@ -60,7 +60,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       Animated.timing(menuAnim, {
         toValue: menuOpen ? 1 : 0,
         duration: 220,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(menuHeight, {
         toValue: menuOpen ? 1 : 0,
