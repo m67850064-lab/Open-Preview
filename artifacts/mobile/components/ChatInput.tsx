@@ -4,6 +4,7 @@ import {
   Animated,
   Image,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -207,18 +208,23 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
         </View>
       )}
 
-      {/* Upload toggle menu */}
+      {/* Upload toggle menu — single scrollable row */}
       <Animated.View
         style={[
           styles.menu,
           {
-            height: menuHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 106] }),
+            height: menuHeight.interpolate({ inputRange: [0, 1], outputRange: [0, 46] }),
             opacity: menuAnim,
             transform: [{ translateY: menuTranslateY }],
           },
         ]}
       >
-        <View style={styles.menuRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.menuScroll}
+          keyboardShouldPersistTaps="handled"
+        >
           <TouchableOpacity
             onPress={handleDocumentUpload}
             style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -236,9 +242,7 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
             <Feather name="image" size={16} color={colors.brand} />
             <Text style={[styles.menuBtnText, { color: colors.text }]}>Gallery</Text>
           </TouchableOpacity>
-        </View>
 
-        <View style={styles.menuRow}>
           <TouchableOpacity
             onPress={handleCameraCapture}
             style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -247,7 +251,7 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
             <Feather name="camera" size={16} color={colors.brand} />
             <Text style={[styles.menuBtnText, { color: colors.text }]}>Camera</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </Animated.View>
 
       {/* Input pill */}
@@ -376,12 +380,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menu: {
-    gap: 8,
     overflow: 'hidden',
   },
-  menuRow: {
+  menuScroll: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
+    paddingVertical: 2,
   },
   menuBtn: {
     flexDirection: 'row',
