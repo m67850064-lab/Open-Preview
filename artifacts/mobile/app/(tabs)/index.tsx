@@ -29,6 +29,7 @@ export default function ChatScreen() {
     handleDeleteChat,
     handleRenameChat,
     handleSendMessage,
+    stopGeneration,
     clearAllHistory,
   } = useConversations();
 
@@ -74,7 +75,7 @@ export default function ChatScreen() {
           </View>
         )}
 
-        <ChatInput onSend={handleSendMessage} disabled={hasTyping} />
+        <ChatInput onSend={handleSendMessage} onStop={stopGeneration} disabled={hasTyping} />
       </KeyboardAvoidingView>
 
       <ConversationDrawer

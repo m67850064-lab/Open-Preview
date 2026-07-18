@@ -60,6 +60,7 @@ interface ConversationContextType {
   handleDeleteChat: (id: string) => void;
   handleRenameChat: (id: string, title: string) => void;
   handleSendMessage: (text: string, attachment?: ChatAttachment) => void;
+  stopGeneration: () => void;
   clearAllHistory: () => void;
 }
 
@@ -77,6 +78,8 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const mountedRef = useRef(true);
+  // Tracks the current generation; cleared by stopGeneration() to cancel it
+  const generationIdRef = useRef<string | null>(null);
 
   // Load from storage
   useEffect(() => {
@@ -155,6 +158,18 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
     );
   }, []);
 
+  // Stop the currently running generation
+  const stopGeneration = useCallback(() => {
+    generationIdRef.current = null; // invalidate ongoing generation
+    // Remove the empty typing bubble immediately
+    setConversations((prev) =>
+      prev.map((c) => ({
+        ...c,
+        messages: c.messages.filter((m) => !(m.role === 'model' && m.text === '')),
+      }))
+    );
+  }, []);
+
   const handleSendMessage = useCallback(
     async (text: string, attachment?: ChatAttachment) => {
       if (!text.trim() && !attachment) return;
@@ -175,6 +190,10 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
       };
       const modelMsgId = modelMsg.id;
 
+      // Assign a generation ID so stopGeneration() can cancel it
+      const genId = uid();
+      generationIdRef.current = genId;
+
       const currentConv = activeConversation;
       const currentActiveId = activeId;
       if (!currentConv || !currentActiveId) {
@@ -191,7 +210,10 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
         setConversations((prev) =>
           prev.map((c) => {
             if (c.id !== currentActiveId) return c;
-            const title = c.messages.length === 0 ? trimmedText.slice(0, 40) || attachment?.name || 'New chat' : c.title;
+            const title =
+              c.messages.length === 0
+                ? trimmedText.slice(0, 40) || attachment?.name || 'New chat'
+                : c.title;
             return { ...c, title, messages: [...c.messages, userMsg, modelMsg] };
           })
         );
@@ -208,7 +230,11 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
           });
           result = failover;
         }
+
         if (!mountedRef.current) return;
+        // If generation was cancelled, the empty bubble is already removed — do nothing
+        if (generationIdRef.current !== genId) return;
+
         setConversations((prev) =>
           prev.map((c) => ({
             ...c,
@@ -219,8 +245,11 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
         );
       } catch (err) {
         if (!mountedRef.current) return;
+        if (generationIdRef.current !== genId) return;
         const errMsg =
-          err instanceof Error ? err.message : "Sorry, I couldn't process your request. Please try again.";
+          err instanceof Error
+            ? err.message
+            : "Sorry, I couldn't process your request. Please try again.";
         setConversations((prev) =>
           prev.map((c) => ({
             ...c,
@@ -255,6 +284,7 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
         handleDeleteChat,
         handleRenameChat,
         handleSendMessage,
+        stopGeneration,
         clearAllHistory,
       }}
     >

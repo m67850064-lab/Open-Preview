@@ -15,15 +15,16 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
-import { isVoiceSupported, startListening, stopListening } from '@/lib/voiceInput';
+import { isVoiceSupported, startListening, cancelListening } from '@/lib/voiceInput';
 import { pickDocument, pickImage, showFileError, type ChatAttachment } from '@/lib/fileUpload';
 
 interface ChatInputProps {
   onSend: (text: string, attachment?: ChatAttachment) => void;
+  onStop?: () => void;
   disabled?: boolean;
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
   const [text, setText] = useState('');
   const [recording, setRecording] = useState(false);
   const [attachment, setAttachment] = useState<ChatAttachment | null>(null);
@@ -70,8 +71,22 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     ]).start();
   }, [menuOpen]);
 
+  // Stop mic immediately (cancel, no transcript)
+  const stopMicNow = useCallback(() => {
+    cancelListening();
+    setRecording(false);
+    pulseLoop.current?.stop();
+    pulseAnim.setValue(1);
+  }, [pulseAnim]);
+
   const handleSend = useCallback(() => {
+    // If mic is active, stop it before sending
+    if (recording) {
+      stopMicNow();
+    }
+
     if (!canSend) return;
+
     const trimmed = text.trim();
     setText('');
     const file = attachment;
@@ -81,7 +96,14 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
     onSend(trimmed, file ?? undefined);
-  }, [canSend, text, attachment, onSend]);
+  }, [canSend, text, attachment, onSend, recording, stopMicNow]);
+
+  const handleStop = useCallback(() => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }
+    onStop?.();
+  }, [onStop]);
 
   const handleMicPress = useCallback(async () => {
     if (!isVoiceSupported()) {
@@ -90,10 +112,12 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     }
 
     if (recording) {
+      // Stop and get transcript
       setRecording(false);
       if (Platform.OS !== 'web') {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       }
+      const { stopListening } = await import('@/lib/voiceInput');
       await stopListening((transcript) => {
         setText((prev) => (prev ? prev + ' ' + transcript : transcript));
       });
@@ -240,33 +264,47 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           editable={!recording}
         />
 
-        {/* Mic button */}
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <TouchableOpacity
-            onPress={handleMicPress}
-            style={styles.iconBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons
-              name={recording ? 'stop-circle' : 'mic-outline'}
-              size={22}
-              color={recording ? '#ef4444' : colors.textMuted}
-            />
-          </TouchableOpacity>
-        </Animated.View>
+        {/* Mic button — hidden while AI is generating */}
+        {!disabled && (
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <TouchableOpacity
+              onPress={handleMicPress}
+              style={styles.iconBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name={recording ? 'stop-circle' : 'mic-outline'}
+                size={22}
+                color={recording ? '#ef4444' : colors.textMuted}
+              />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
-        {/* Send button */}
-        <TouchableOpacity
-          onPress={handleSend}
-          disabled={!canSend}
-          style={[
-            styles.sendBtn,
-            { backgroundColor: canSend ? colors.brand : colors.surfaceHover },
-          ]}
-          activeOpacity={0.8}
-        >
-          <Feather name="arrow-up" size={17} color={canSend ? '#fff' : colors.textSubtle} />
-        </TouchableOpacity>
+        {/* Send / Stop button */}
+        {disabled ? (
+          /* Stop button — shown while AI is generating */
+          <TouchableOpacity
+            onPress={handleStop}
+            style={[styles.sendBtn, { backgroundColor: colors.brand }]}
+            activeOpacity={0.8}
+          >
+            <Feather name="square" size={14} color="#fff" />
+          </TouchableOpacity>
+        ) : (
+          /* Normal send button */
+          <TouchableOpacity
+            onPress={handleSend}
+            disabled={!canSend}
+            style={[
+              styles.sendBtn,
+              { backgroundColor: canSend ? colors.brand : colors.surfaceHover },
+            ]}
+            activeOpacity={0.8}
+          >
+            <Feather name="arrow-up" size={17} color={canSend ? '#fff' : colors.textSubtle} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Disclaimer */}

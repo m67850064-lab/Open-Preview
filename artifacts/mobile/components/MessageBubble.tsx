@@ -42,31 +42,30 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
         ]}
       >
-        <View
-          style={[
-            styles.userBubble,
-            { backgroundColor: colors.userBubble },
-          ]}
-        >
-          {message.attachment && (
-            <View style={styles.userAttachment}>
-              {message.attachment.type === 'image' ? (
-                <Image source={{ uri: message.attachment.uri }} style={styles.userAttachmentImage} />
-              ) : (
-                <View style={[styles.userAttachmentDoc, { backgroundColor: colors.accent }]}>
-                  <Feather name="file-text" size={16} color={colors.brand} />
-                  <Text style={[styles.userAttachmentDocText, { color: colors.text }]} numberOfLines={1}>
-                    {message.attachment.name}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-          {!!message.text && (
-            <Text style={[styles.userText, { color: colors.userBubbleText }]}>
-              {message.text}
-            </Text>
-          )}
+        <View style={styles.userBubbleGroup}>
+          <View style={[styles.userBubble, { backgroundColor: colors.userBubble }]}>
+            {message.attachment && (
+              <View style={styles.userAttachment}>
+                {message.attachment.type === 'image' ? (
+                  <Image source={{ uri: message.attachment.uri }} style={styles.userAttachmentImage} />
+                ) : (
+                  <View style={[styles.userAttachmentDoc, { backgroundColor: colors.accent }]}>
+                    <Feather name="file-text" size={16} color={colors.brand} />
+                    <Text style={[styles.userAttachmentDocText, { color: colors.text }]} numberOfLines={1}>
+                      {message.attachment.name}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+            {!!message.text && (
+              <Text style={[styles.userText, { color: colors.userBubbleText }]}>
+                {message.text}
+              </Text>
+            )}
+          </View>
+          {/* Copy button below user bubble */}
+          {!!message.text && <UserCopyButton text={message.text} />}
         </View>
       </Animated.View>
     );
@@ -99,13 +98,43 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   );
 }
 
-// ── Response action buttons ──────────────────────────────────────────────────
+// ── User copy button ─────────────────────────────────────────────────────────
 
-interface ResponseActionsProps {
-  text: string;
+function UserCopyButton({ text }: { text: string }) {
+  const colors = useColors();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await Clipboard.setStringAsync(text);
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={handleCopy}
+      style={styles.userCopyBtn}
+      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+      activeOpacity={0.65}
+    >
+      <Feather
+        name={copied ? 'check' : 'copy'}
+        size={13}
+        color={copied ? colors.brand : colors.textSubtle}
+      />
+      {copied && (
+        <Text style={[styles.copiedLabel, { color: colors.brand }]}>Copied!</Text>
+      )}
+    </TouchableOpacity>
+  );
 }
 
-function ResponseActions({ text }: ResponseActionsProps) {
+// ── AI response action buttons ───────────────────────────────────────────────
+
+function ResponseActions({ text }: { text: string }) {
   const colors = useColors();
   const [copied, setCopied] = useState(false);
   const [liked, setLiked] = useState<'like' | 'dislike' | null>(null);
@@ -230,8 +259,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 4,
   },
-  userBubble: {
+  userBubbleGroup: {
+    alignItems: 'flex-end',
     maxWidth: '80%',
+    gap: 4,
+  },
+  userBubble: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 22,
@@ -265,6 +298,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     flex: 1,
   },
+  userCopyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-end',
+  },
 
   // Model
   modelRow: {
@@ -288,7 +330,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
   },
 
-  // Action buttons
+  // Action buttons (AI)
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
