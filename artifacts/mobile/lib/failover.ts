@@ -1,13 +1,9 @@
 /**
- * AI provider failover chain — parallel race strategy.
+ * AI provider failover — parallel race with AbortController.
  *
- * All available providers are fired simultaneously.
- * Whichever responds first wins; the rest are silently ignored.
- * This eliminates sequential timeout waits and gives the fastest
- * possible response regardless of which provider is healthiest.
- *
- * Chain: Groq → Gemini → Mistral → OpenRouter
- * Keys read from EXPO_PUBLIC_* env vars.
+ * All available providers fire simultaneously.
+ * Whichever responds first wins; losers are aborted (actual network cancel).
+ * Timeout: 15 seconds per round, then retries once before giving up.
  */
 
 export interface GenerateOptions {
@@ -20,35 +16,38 @@ export interface GenerateResult {
   provider: string;
 }
 
-const GEMINI_MODEL = 'gemini-2.0-flash-lite';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
-const MISTRAL_MODEL = 'mistral-small-latest';
+const GEMINI_MODEL    = 'gemini-2.0-flash-lite';
+const GROQ_MODEL      = 'llama-3.3-70b-versatile';
+const MISTRAL_MODEL   = 'mistral-small-latest';
 const OPENROUTER_MODEL = 'openai/gpt-4o-mini';
 
-// Per-request timeout (ms). If a provider doesn't reply within this,
-// it's treated as failed for this race — another provider still wins.
-const PROVIDER_TIMEOUT_MS = 12000;
+/** Hard network-cancel after this many ms. */
+const TIMEOUT_MS = 15_000;
 
-interface Provider {
-  name: string;
-  getKey: () => string;
-  generate: (opts: GenerateOptions, key: string) => Promise<string>;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function abortAfter(ms: number): { signal: AbortSignal; clear: () => void } {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return { signal: ctrl.signal, clear: () => clearTimeout(timer) };
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`${label}: timed out after ${ms}ms`)),
-      ms
-    );
-    promise.then(
-      (v) => { clearTimeout(timer); resolve(v); },
-      (e) => { clearTimeout(timer); reject(e); }
-    );
-  });
+async function safeFetch(url: string, init: RequestInit & { signal?: AbortSignal }): Promise<Response> {
+  const res = await fetch(url, init);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}${body ? ': ' + body.slice(0, 120) : ''}`);
+  }
+  return res;
 }
 
-async function callGemini(opts: GenerateOptions, key: string): Promise<string> {
+// ─── Provider calls ───────────────────────────────────────────────────────────
+
+async function callGemini(
+  opts: GenerateOptions,
+  key: string,
+  signal: AbortSignal
+): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
   const contents: { role: string; parts: { text: string }[] }[] = [];
   if (opts.systemPrompt) {
@@ -57,17 +56,14 @@ async function callGemini(opts: GenerateOptions, key: string): Promise<string> {
   }
   contents.push({ role: 'user', parts: [{ text: opts.prompt }] });
 
-  const res = await fetch(url, {
+  const res = await safeFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents,
-      generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
-    }),
+    body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 1024 } }),
+    signal,
   });
-  if (!res.ok) throw new Error(`Gemini HTTP ${res.status}`);
   const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error('Gemini: empty response');
   return text;
 }
@@ -77,13 +73,14 @@ async function callOpenAICompatible(
   model: string,
   opts: GenerateOptions,
   key: string,
+  signal: AbortSignal,
   extraHeaders?: Record<string, string>
 ): Promise<string> {
   const messages: { role: string; content: string }[] = [];
   if (opts.systemPrompt) messages.push({ role: 'system', content: opts.systemPrompt });
   messages.push({ role: 'user', content: opts.prompt });
 
-  const res = await fetch(url, {
+  const res = await safeFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -91,48 +88,98 @@ async function callOpenAICompatible(
       ...extraHeaders,
     },
     body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 1024 }),
+    signal,
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
-  const text = data?.choices?.[0]?.message?.content;
+  const text: string | undefined = data?.choices?.[0]?.message?.content;
   if (!text) throw new Error('Empty response');
   return text;
+}
+
+// ─── Provider registry ────────────────────────────────────────────────────────
+
+interface Provider {
+  name: string;
+  getKey: () => string;
+  generate: (opts: GenerateOptions, key: string, signal: AbortSignal) => Promise<string>;
 }
 
 const CHAIN: Provider[] = [
   {
     name: 'Groq',
     getKey: () => process.env.EXPO_PUBLIC_GROQ_API_KEY ?? '',
-    generate: (opts, key) =>
-      callOpenAICompatible('https://api.groq.com/openai/v1/chat/completions', GROQ_MODEL, opts, key),
+    generate: (opts, key, signal) =>
+      callOpenAICompatible('https://api.groq.com/openai/v1/chat/completions', GROQ_MODEL, opts, key, signal),
   },
   {
     name: 'Gemini',
     getKey: () => process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '',
-    generate: (opts, key) => callGemini(opts, key),
+    generate: (opts, key, signal) => callGemini(opts, key, signal),
   },
   {
     name: 'Mistral',
     getKey: () => process.env.EXPO_PUBLIC_MISTRAL_API_KEY ?? '',
-    generate: (opts, key) =>
-      callOpenAICompatible('https://api.mistral.ai/v1/chat/completions', MISTRAL_MODEL, opts, key),
+    generate: (opts, key, signal) =>
+      callOpenAICompatible('https://api.mistral.ai/v1/chat/completions', MISTRAL_MODEL, opts, key, signal),
   },
   {
     name: 'OpenRouter',
     getKey: () => process.env.EXPO_PUBLIC_OPENROUTER_API_KEY ?? '',
-    generate: (opts, key) =>
+    generate: (opts, key, signal) =>
       callOpenAICompatible(
         'https://openrouter.ai/api/v1/chat/completions',
         OPENROUTER_MODEL,
         opts,
         key,
-        {
-          'HTTP-Referer': 'https://vertex-ai-chat.app',
-          'X-Title': 'Vertex AI Chat',
-        }
+        signal,
+        { 'HTTP-Referer': 'https://vertex-ai-chat.app', 'X-Title': 'Vertex AI Chat' }
       ),
   },
 ];
+
+// ─── Race with real abort ─────────────────────────────────────────────────────
+
+async function raceProviders(
+  opts: GenerateOptions,
+  providers: Provider[]
+): Promise<GenerateResult> {
+  // One AbortController per provider — winner aborts all losers.
+  const controllers = providers.map(() => new AbortController());
+
+  // Global timeout aborts ALL if nobody wins in time.
+  const timeout = abortAfter(TIMEOUT_MS);
+
+  // Abort everything when global timeout fires.
+  timeout.signal.addEventListener('abort', () => {
+    controllers.forEach((c) => c.abort());
+  });
+
+  const races = providers.map((p, i) => {
+    // Merge per-provider abort with global timeout abort.
+    const signal = controllers[i].signal;
+    return p
+      .generate(opts, p.getKey(), signal)
+      .then((text): GenerateResult => {
+        // Winner — abort all other providers immediately.
+        controllers.forEach((c, j) => { if (j !== i) c.abort(); });
+        return { text, provider: p.name };
+      });
+  });
+
+  try {
+    const result = await Promise.any(races);
+    timeout.clear();
+    return result;
+  } catch (aggErr: any) {
+    timeout.clear();
+    const msgs: string[] = aggErr?.errors
+      ? (aggErr.errors as Error[]).map((e: Error, i: number) => `${providers[i]?.name ?? i}: ${e.message}`)
+      : [String(aggErr)];
+    throw new Error(msgs.join(' | '));
+  }
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function generateWithFailover(opts: GenerateOptions): Promise<GenerateResult> {
   const available = CHAIN.filter((p) => !!p.getKey());
@@ -144,22 +191,12 @@ export async function generateWithFailover(opts: GenerateOptions): Promise<Gener
     );
   }
 
-  // Fire all providers simultaneously — first successful response wins.
-  const races = available.map((p) =>
-    withTimeout(p.generate(opts, p.getKey()), PROVIDER_TIMEOUT_MS, p.name).then(
-      (text): GenerateResult => ({ text, provider: p.name })
-    )
-  );
-
-  // Promise.any resolves with the first fulfilled promise.
-  // If ALL reject (network down, bad keys, etc.), it throws AggregateError.
+  // Round 1 — race all providers.
   try {
-    return await Promise.any(races);
-  } catch (aggErr: any) {
-    // AggregateError: collect individual messages
-    const errors: string[] = aggErr?.errors
-      ? (aggErr.errors as Error[]).map((e, i) => `${available[i]?.name ?? i}: ${e.message}`)
-      : [String(aggErr)];
-    throw new Error(`All providers failed:\n${errors.join('\n')}`);
+    return await raceProviders(opts, available);
+  } catch {
+    // Round 2 — one retry after a brief pause (in case of transient errors).
+    await new Promise((r) => setTimeout(r, 1500));
+    return await raceProviders(opts, available);
   }
 }
