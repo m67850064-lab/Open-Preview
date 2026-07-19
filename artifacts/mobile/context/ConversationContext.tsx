@@ -7,8 +7,7 @@ import React, {
   useState,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { generateWithFailover } from '@/lib/failover';
-import { sendToBackend } from '@/lib/chatApi';
+import { sendTextToServer, sendToBackend } from '@/lib/chatApi';
 import type { ChatAttachment } from '@/lib/fileUpload';
 
 const STORAGE_KEY = 'vertex-ai-conversations';
@@ -224,11 +223,16 @@ export function ConversationProvider({ children }: { children: React.ReactNode }
         if (attachment) {
           result = await sendToBackend({ text: trimmedText, attachment });
         } else {
-          const failover = await generateWithFailover({
-            prompt: trimmedText,
-            systemPrompt: SYSTEM_PROMPT,
-          });
-          result = failover;
+          // Route text through server — server has fast internet, device only
+          // needs one connection to Replit instead of 4 direct AI API calls.
+          const history = (currentConv?.messages ?? [])
+            .filter((m) => m.text && m.role !== 'model' || m.text)
+            .slice(-10) // last 5 exchanges for context
+            .map((m) => ({
+              role: (m.role === 'model' ? 'assistant' : 'user') as 'user' | 'assistant',
+              content: m.text,
+            }));
+          result = await sendTextToServer({ prompt: trimmedText, history });
         }
 
         if (!mountedRef.current) return;

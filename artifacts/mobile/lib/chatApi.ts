@@ -3,6 +3,43 @@ import type { ChatAttachment } from './fileUpload';
 
 const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || 'localhost'}/api`;
 
+// ─── Text chat via server (server has fast internet) ──────────────────────────
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface SendTextOptions {
+  prompt: string;
+  history?: ChatMessage[];
+}
+
+export async function sendTextToServer({ prompt, history = [] }: SendTextOptions): Promise<{ text: string; provider: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+
+  try {
+    const response = await fetch(`${API_BASE}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, history }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(body || `Server error ${response.status}`);
+    }
+
+    return response.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ─── File + text via server ───────────────────────────────────────────────────
+
 export interface SendToBackendOptions {
   text: string;
   attachment?: ChatAttachment;
@@ -30,16 +67,13 @@ export async function sendToBackend({ text, attachment }: SendToBackendOptions):
   return response.json();
 }
 
-async function attachmentToFormDataPart(attachment: ChatAttachment): Promise<File | { uri: string; name: string; type: string }> {
+async function attachmentToFormDataPart(
+  attachment: ChatAttachment
+): Promise<File | { uri: string; name: string; type: string }> {
   if (Platform.OS === 'web') {
     const res = await fetch(attachment.uri);
     const blob = await res.blob();
     return new File([blob], attachment.name, { type: attachment.mimeType });
   }
-
-  return {
-    uri: attachment.uri,
-    name: attachment.name,
-    type: attachment.mimeType,
-  };
+  return { uri: attachment.uri, name: attachment.name, type: attachment.mimeType };
 }
