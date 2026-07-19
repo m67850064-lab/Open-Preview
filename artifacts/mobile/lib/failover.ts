@@ -1,11 +1,13 @@
 /**
- * AI provider failover chain for React Native / Expo.
- * Tries providers in order, falling back to the next on failure.
+ * AI provider failover chain — parallel race strategy.
  *
- * Chain order: Gemini → Groq → Mistral → OpenRouter
+ * All available providers are fired simultaneously.
+ * Whichever responds first wins; the rest are silently ignored.
+ * This eliminates sequential timeout waits and gives the fastest
+ * possible response regardless of which provider is healthiest.
  *
- * API keys are read from EXPO_PUBLIC_* environment variables.
- * Set at least one key for the app to work.
+ * Chain: Groq → Gemini → Mistral → OpenRouter
+ * Keys read from EXPO_PUBLIC_* env vars.
  */
 
 export interface GenerateOptions {
@@ -23,15 +25,32 @@ const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const MISTRAL_MODEL = 'mistral-small-latest';
 const OPENROUTER_MODEL = 'openai/gpt-4o-mini';
 
+// Per-request timeout (ms). If a provider doesn't reply within this,
+// it's treated as failed for this race — another provider still wins.
+const PROVIDER_TIMEOUT_MS = 12000;
+
 interface Provider {
   name: string;
   getKey: () => string;
   generate: (opts: GenerateOptions, key: string) => Promise<string>;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${label}: timed out after ${ms}ms`)),
+      ms
+    );
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); }
+    );
+  });
+}
+
 async function callGemini(opts: GenerateOptions, key: string): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
-  const contents = [];
+  const contents: { role: string; parts: { text: string }[] }[] = [];
   if (opts.systemPrompt) {
     contents.push({ role: 'user', parts: [{ text: opts.systemPrompt }] });
     contents.push({ role: 'model', parts: [{ text: 'Understood.' }] });
@@ -82,14 +101,12 @@ async function callOpenAICompatible(
 
 const CHAIN: Provider[] = [
   {
-    // Groq is first — fastest inference (~200ms typical)
     name: 'Groq',
     getKey: () => process.env.EXPO_PUBLIC_GROQ_API_KEY ?? '',
     generate: (opts, key) =>
       callOpenAICompatible('https://api.groq.com/openai/v1/chat/completions', GROQ_MODEL, opts, key),
   },
   {
-    // Gemini 2.0 Flash Lite — fast fallback
     name: 'Gemini',
     getKey: () => process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '',
     generate: (opts, key) => callGemini(opts, key),
@@ -118,24 +135,31 @@ const CHAIN: Provider[] = [
 ];
 
 export async function generateWithFailover(opts: GenerateOptions): Promise<GenerateResult> {
-  const availableProviders = CHAIN.filter((p) => !!p.getKey());
+  const available = CHAIN.filter((p) => !!p.getKey());
 
-  if (availableProviders.length === 0) {
+  if (available.length === 0) {
     throw new Error(
-      'No API keys configured. Set EXPO_PUBLIC_GEMINI_API_KEY, EXPO_PUBLIC_GROQ_API_KEY, EXPO_PUBLIC_MISTRAL_API_KEY, or EXPO_PUBLIC_OPENROUTER_API_KEY.'
+      'No API keys configured. Set EXPO_PUBLIC_GEMINI_API_KEY, EXPO_PUBLIC_GROQ_API_KEY, ' +
+      'EXPO_PUBLIC_MISTRAL_API_KEY, or EXPO_PUBLIC_OPENROUTER_API_KEY.'
     );
   }
 
-  const errors: string[] = [];
-  for (const provider of availableProviders) {
-    try {
-      const text = await provider.generate(opts, provider.getKey());
-      return { text, provider: provider.name };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      errors.push(`${provider.name}: ${msg}`);
-    }
-  }
+  // Fire all providers simultaneously — first successful response wins.
+  const races = available.map((p) =>
+    withTimeout(p.generate(opts, p.getKey()), PROVIDER_TIMEOUT_MS, p.name).then(
+      (text): GenerateResult => ({ text, provider: p.name })
+    )
+  );
 
-  throw new Error(`All providers failed:\n${errors.join('\n')}`);
+  // Promise.any resolves with the first fulfilled promise.
+  // If ALL reject (network down, bad keys, etc.), it throws AggregateError.
+  try {
+    return await Promise.any(races);
+  } catch (aggErr: any) {
+    // AggregateError: collect individual messages
+    const errors: string[] = aggErr?.errors
+      ? (aggErr.errors as Error[]).map((e, i) => `${available[i]?.name ?? i}: ${e.message}`)
+      : [String(aggErr)];
+    throw new Error(`All providers failed:\n${errors.join('\n')}`);
+  }
 }
