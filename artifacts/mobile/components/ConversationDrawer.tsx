@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -125,7 +125,7 @@ export function ConversationDrawer({
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={styles.menuBtn}
             >
-              <Feather name="menu" size={22} color={colors.textMuted} />
+              <Icon name="menu" size={22} color={colors.textMuted} />
             </TouchableOpacity>
             <GeminiStar size={20} />
             <Text style={[styles.brandName, { color: colors.text }]}>Vertex AI</Text>
@@ -150,7 +150,7 @@ export function ConversationDrawer({
             }}
             activeOpacity={0.75}
           >
-            <Feather name="plus" size={16} color={colors.text} />
+            <Icon name="plus" size={16} color={colors.text} />
             <Text style={[styles.newChatText, { color: colors.text }]}>New chat</Text>
           </TouchableOpacity>
 
@@ -173,7 +173,7 @@ export function ConversationDrawer({
                 ])
               }
             >
-              <Feather name="trash-2" size={14} color={colors.destructive} />
+              <Icon name="trash-2" size={14} color={colors.destructive} />
               <Text style={[styles.clearAllText, { color: colors.destructive }]}>Clear</Text>
             </TouchableOpacity>
           )}
@@ -295,14 +295,14 @@ function ConversationItem({
             style={styles.actionBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Feather name="edit-3" size={15} color={colors.textSubtle} />
+            <Icon name="edit-3" size={15} color={colors.textSubtle} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleDelete}
             style={styles.actionBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Feather name="trash-2" size={15} color={colors.destructive} />
+            <Icon name="trash-2" size={15} color={colors.destructive} />
           </TouchableOpacity>
         </View>
       )}

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { Feather } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { useColors } from '@/hooks/useColors';
 import { GeminiStar } from './GeminiStar';
 import type { ChatMessage } from '@/context/ConversationContext';
@@ -50,7 +50,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                   <Image source={{ uri: message.attachment.uri }} style={styles.userAttachmentImage} />
                 ) : (
                   <View style={[styles.userAttachmentDoc, { backgroundColor: colors.accent }]}>
-                    <Feather name="file-text" size={16} color={colors.brand} />
+                    <Icon name="file-text" size={16} color={colors.brand} />
                     <Text style={[styles.userAttachmentDocText, { color: colors.text }]} numberOfLines={1}>
                       {message.attachment.name}
                     </Text>
@@ -120,7 +120,7 @@ function UserCopyButton({ text }: { text: string }) {
       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
       activeOpacity={0.65}
     >
-      <Feather
+      <Icon
         name={copied ? 'check' : 'copy'}
         size={13}
         color={copied ? colors.brand : colors.textSubtle}
@@ -171,7 +171,7 @@ function ResponseActions({ text }: { text: string }) {
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         activeOpacity={0.65}
       >
-        <Feather
+        <Icon
           name={copied ? 'check' : 'copy'}
           size={15}
           color={copied ? colors.brand : colors.textSubtle}
@@ -188,7 +188,7 @@ function ResponseActions({ text }: { text: string }) {
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         activeOpacity={0.65}
       >
-        <Feather
+        <Icon
           name="thumbs-up"
           size={15}
           color={liked === 'like' ? colors.brand : colors.textSubtle}
@@ -202,7 +202,7 @@ function ResponseActions({ text }: { text: string }) {
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         activeOpacity={0.65}
       >
-        <Feather
+        <Icon
           name="thumbs-down"
           size={15}
           color={liked === 'dislike' ? '#ef4444' : colors.textSubtle}

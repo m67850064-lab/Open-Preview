@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { Ionicons } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useTheme } from '@/context/ThemeContext';
@@ -34,7 +33,7 @@ export function Header({ onMenuPress, onNewChat }: HeaderProps) {
         style={styles.iconBtn}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Feather name="menu" size={22} color={colors.textMuted} />
+        <Icon name="menu" size={22} color={colors.textMuted} />
       </TouchableOpacity>
 
       {/* Center: star + "Vertex AI" */}
@@ -50,7 +49,7 @@ export function Header({ onMenuPress, onNewChat }: HeaderProps) {
           style={styles.iconBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons
+          <Icon
             name={theme === 'dark' ? 'sunny-outline' : 'moon-outline'}
             size={21}
             color={colors.textMuted}
@@ -62,7 +61,7 @@ export function Header({ onMenuPress, onNewChat }: HeaderProps) {
           style={styles.iconBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Feather name="edit" size={20} color={colors.textMuted} />
+          <Icon name="edit" size={20} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
     </View>

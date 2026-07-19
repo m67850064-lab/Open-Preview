@@ -13,31 +13,14 @@ import Svg, {
   LinearGradient,
   Stop,
 } from 'react-native-svg';
-import { Ionicons } from '@expo/vector-icons';
-import { Feather } from '@expo/vector-icons';
+import { Icon, type IconName } from './Icon';
 import { useColors } from '@/hooks/useColors';
 
-const SAMPLE_PROMPTS = [
-  {
-    text: 'Explain quantum computing in simple terms',
-    icon: 'bulb-outline' as const,
-    lib: 'ionicons',
-  },
-  {
-    text: 'Write a poem about the ocean',
-    icon: 'create-outline' as const,
-    lib: 'ionicons',
-  },
-  {
-    text: 'Give me ideas for a weekend project',
-    icon: 'flask-outline' as const,
-    lib: 'ionicons',
-  },
-  {
-    text: 'What are the latest AI trends?',
-    icon: 'search-outline' as const,
-    lib: 'ionicons',
-  },
+const SAMPLE_PROMPTS: { text: string; icon: IconName }[] = [
+  { text: 'Explain quantum computing in simple terms', icon: 'bulb-outline' },
+  { text: 'Write a poem about the ocean',              icon: 'create-outline' },
+  { text: 'Give me ideas for a weekend project',       icon: 'flask-outline' },
+  { text: 'What are the latest AI trends?',            icon: 'search-outline' },
 ];
 
 interface WelcomeScreenProps {
@@ -104,11 +87,7 @@ export function WelcomeScreen({ onPromptPress }: WelcomeScreenProps) {
             activeOpacity={0.75}
           >
             <View style={[styles.cardIcon, { backgroundColor: colors.accent }]}>
-              <Ionicons
-                name={prompt.icon}
-                size={20}
-                color={colors.brand}
-              />
+              <Icon name={prompt.icon} size={20} color={colors.brand} />
             </View>
             <Text
               style={[styles.cardText, { color: colors.text }]}

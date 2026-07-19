@@ -11,8 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Feather } from '@expo/vector-icons';
+import { Icon } from './Icon';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -196,14 +195,14 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
             <Image source={{ uri: attachment.uri }} style={styles.previewThumb} />
           ) : (
             <View style={[styles.previewIcon, { backgroundColor: colors.accent }]}>
-              <Feather name="file-text" size={18} color={colors.brand} />
+              <Icon name="file-text" size={18} color={colors.brand} />
             </View>
           )}
           <Text style={[styles.previewName, { color: colors.text }]} numberOfLines={1}>
             {attachment.name}
           </Text>
           <TouchableOpacity onPress={clearAttachment} style={styles.clearAttachmentBtn}>
-            <Feather name="x" size={18} color={colors.textMuted} />
+            <Icon name="x" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
       )}
@@ -230,7 +229,7 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
             style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             activeOpacity={0.7}
           >
-            <Feather name="file-text" size={16} color={colors.brand} />
+            <Icon name="file-text" size={16} color={colors.brand} />
             <Text style={[styles.menuBtnText, { color: colors.text }]}>Document</Text>
           </TouchableOpacity>
 
@@ -239,7 +238,7 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
             style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             activeOpacity={0.7}
           >
-            <Feather name="image" size={16} color={colors.brand} />
+            <Icon name="image" size={16} color={colors.brand} />
             <Text style={[styles.menuBtnText, { color: colors.text }]}>Gallery</Text>
           </TouchableOpacity>
 
@@ -248,7 +247,7 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
             style={[styles.menuBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             activeOpacity={0.7}
           >
-            <Feather name="camera" size={16} color={colors.brand} />
+            <Icon name="camera" size={16} color={colors.brand} />
             <Text style={[styles.menuBtnText, { color: colors.text }]}>Camera</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -272,7 +271,7 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Animated.View style={{ transform: [{ rotate: menuOpen ? '45deg' : '0deg' }] }}>
-            <Feather name="plus" size={22} color={colors.textMuted} />
+            <Icon name="plus" size={22} color={colors.textMuted} />
           </Animated.View>
         </TouchableOpacity>
 
@@ -299,7 +298,7 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
               style={styles.iconBtn}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons
+              <Icon
                 name={recording ? 'stop-circle' : 'mic-outline'}
                 size={22}
                 color={recording ? '#ef4444' : colors.textMuted}
@@ -316,7 +315,7 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
             style={[styles.sendBtn, { backgroundColor: colors.brand }]}
             activeOpacity={0.8}
           >
-            <Feather name="square" size={14} color="#fff" />
+            <Icon name="square" size={14} color="#fff" />
           </TouchableOpacity>
         ) : (
           /* Normal send button */
@@ -329,7 +328,7 @@ export function ChatInput({ onSend, onStop, disabled }: ChatInputProps) {
             ]}
             activeOpacity={0.8}
           >
-            <Feather name="arrow-up" size={17} color={canSend ? '#fff' : colors.textSubtle} />
+            <Icon name="arrow-up" size={17} color={canSend ? '#fff' : colors.textSubtle} />
           </TouchableOpacity>
         )}
       </View>
