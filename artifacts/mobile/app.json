@@ -8,21 +8,52 @@
     "scheme": "vertexai",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.vertexai.app"
+      "bundleIdentifier": "com.vertexai.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Vertex AI को photos attach करने के लिए camera access चाहिए।",
+        "NSPhotoLibraryUsageDescription": "Vertex AI को photos attach करने के लिए photo library access चाहिए।",
+        "NSMicrophoneUsageDescription": "Vertex AI को voice input के लिए microphone access चाहिए।"
+      }
     },
+
     "android": {
-      "package": "com.vertexai.app"
+      "package": "com.vertexai.app",
+      "versionCode": 1,
+
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.VIBRATE"
+      ],
+
+      "softwareKeyboardLayoutMode": "resize",
+      "edgeToEdgeEnabled": true
     },
+
     "web": {
       "favicon": "./assets/images/icon.png"
     },
+
     "plugins": [
       [
         "expo-router",
@@ -31,8 +62,46 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Vertex AI को messages में photos attach करने के लिए photo library access चाहिए।",
+          "cameraPermission": "Vertex AI को messages में photos लेने के लिए camera access चाहिए।",
+          "microphonePermission": false
+        }
+      ],
+
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Vertex AI को voice input के लिए microphone access चाहिए।"
+        }
+      ],
+
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ],
+
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "image": "./assets/images/icon.png",
+            "backgroundColor": "#000000"
+          }
+        }
+      ]
     ],
+
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
