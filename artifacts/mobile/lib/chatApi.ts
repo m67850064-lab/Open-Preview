@@ -17,7 +17,9 @@ export interface SendTextOptions {
 
 export async function sendTextToServer({ prompt, history = [] }: SendTextOptions): Promise<{ text: string; provider: string }> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30_000);
+  // The server tries four providers sequentially, each with an 8-second
+  // timeout, so allow the full fallback chain plus connection overhead.
+  const timer = setTimeout(() => controller.abort(), 40_000);
 
   try {
     const response = await fetch(`${API_BASE}/chat`, {

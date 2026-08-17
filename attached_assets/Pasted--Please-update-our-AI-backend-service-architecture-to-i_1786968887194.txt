@@ -1,0 +1,52 @@
+"Please update our AI backend/service architecture to implement a robust, seamless multi-provider fallback mechanism with explicit model configurations, provider-specific payload formatting, and strict error-handling rules.
+
+1. API Providers, Environment Keys & Specific Model Configurations:
+Configure the following 4 providers sequentially using the exact model identifiers and API handlers:
+
+1st Priority (Gemini):
+
+API Key Variable: GEMINI_API_KEY (or fallback to VITE_GEMINI_API_KEY)
+
+Model ID: gemini-1.5-flash
+
+Handler: Google GenAI SDK / Gemini Rest API endpoint
+
+2nd Priority (Groq):
+
+API Key Variable: GROQ_API_KEY (or fallback to VITE_GROQ_API_KEY)
+
+Model ID: llama-3.3-70b-versatile
+
+Handler: Groq SDK or OpenAI-compatible endpoint ([https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions))
+
+3rd Priority (Mistral):
+
+API Key Variable: MISTRAL_API_KEY (or fallback to VITE_MISTRAL_API_KEY)
+
+Model ID: mistral-small-latest
+
+Handler: Mistral Client SDK or endpoint ([https://api.mistral.ai/v1/chat/completions](https://api.mistral.ai/v1/chat/completions))
+
+4th Priority (OpenRouter):
+
+API Key Variable: OPENROUTER_API_KEY (or fallback to VITE_OPENROUTER_API_KEY)
+
+Model ID: openrouter/auto (or meta-llama/llama-3.1-8b-instruct:free)
+
+Handler: OpenRouter API endpoint ([https://openrouter.ai/api/v1/chat/completions](https://openrouter.ai/api/v1/chat/completions))
+
+2. Execution Flow & Universal Fallback Rules:
+
+Sequential Execution: Wrap each call in an asynchronous try-catch sequence starting from Provider 1 down to Provider 4.
+
+Strict 8-Second Timeout: Implement an AbortController (or 8000ms timeout logic) for every API request to immediately terminate hanging connections.
+
+Catch ALL Failures: Intercept any network error, timeout, CORS error, rate limit (429), authorization issue (401/403), model missing error (404), or server errors (500/502/503).
+
+Automatic Provider Switching: Do NOT throw an unhandled exception or break the execution flow if a provider fails. Automatically forward the user prompt to the next provider using that provider's specific API request schema and payload parameters.
+
+Response Standardization: Parse and normalize the successful output from whichever provider succeeds into a single uniform plain text/JSON string structure before returning it to the frontend component.
+
+Console Logging: Print detailed debug logs for monitoring (e.g., "[Fallback Log] Provider 1 (Gemini) failed with error: X. Switching to Provider 2 (Groq - llama-3.3-70b-versatile)...").
+
+Final Error Fallback: Only if ALL 4 providers fail sequentially, catch and throw the primary (Gemini) error message to be displayed on the frontend UI."**

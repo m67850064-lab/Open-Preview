@@ -1,20 +1,21 @@
 /**
- * POST /api/chat — text-only AI with server-side parallel failover.
+ * POST /api/chat — text-only AI with deterministic provider fallback.
  *
- * The server has good internet; device only needs to reach Replit.
- * Groq → Gemini → Mistral → OpenRouter all race simultaneously.
- * First to respond wins; losers are aborted.
+ * Every provider gets its own 8-second timeout. A failed provider (including
+ * network, auth, rate-limit, missing-model, and server errors) is logged and
+ * the request continues with the next provider in priority order.
  */
-import { Router, type Request, type Response } from "express";
+import { Router, type Request, type Response as ExpressResponse } from "express";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
-const GEMINI_MODEL    = "gemini-2.0-flash-lite";
-const GROQ_MODEL      = "llama-3.3-70b-versatile";
-const MISTRAL_MODEL   = "mistral-small-latest";
-const OPENROUTER_MODEL = "openai/gpt-4o-mini";
+const GEMINI_MODEL = "gemini-1.5-flash";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+const MISTRAL_MODEL = "mistral-small-latest";
+const OPENROUTER_MODEL = "openrouter/auto";
 
-const TIMEOUT_MS = 20_000;
+const PROVIDER_TIMEOUT_MS = 8_000;
 
 const SYSTEM_PROMPT =
   "You are Vertex AI, a friendly and helpful conversational assistant. " +
@@ -30,145 +31,306 @@ interface ChatMessage {
 
 interface Provider {
   name: string;
+  model: string;
   key: string | undefined;
-  call: (prompt: string, history: ChatMessage[], signal: AbortSignal) => Promise<string>;
+  call: (prompt: string, history: ChatMessage[]) => Promise<string>;
 }
 
-// ─── Gemini ────────────────────────────────────────────────────────────────────
-async function callGemini(prompt: string, history: ChatMessage[], signal: AbortSignal): Promise<string> {
-  const key = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-  if (!key) throw new Error("No Gemini key");
+function getEnvironmentKey(...names: string[]): string | undefined {
+  for (const name of names) {
+    const value = process.env[name]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
 
-  const contents: { role: string; parts: { text: string }[] }[] = [
-    { role: "user",  parts: [{ text: SYSTEM_PROMPT }] },
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.name === "AbortError") {
+      return `request timed out after ${PROVIDER_TIMEOUT_MS}ms`;
+    }
+    return error.message || error.name;
+  }
+  return String(error);
+}
+
+async function readProviderError(response: globalThis.Response): Promise<string> {
+  const body = await response.text().catch(() => "");
+  if (!body) return `HTTP ${response.status}`;
+
+  try {
+    const parsed = JSON.parse(body) as {
+      error?: { message?: string } | string;
+      message?: string;
+    };
+    const detail =
+      typeof parsed.error === "string"
+        ? parsed.error
+        : parsed.error?.message ?? parsed.message;
+    return `HTTP ${response.status}${detail ? `: ${detail}` : ""}`;
+  } catch {
+    return `HTTP ${response.status}: ${body.slice(0, 300)}`;
+  }
+}
+
+async function fetchJson(
+  url: string,
+  init: RequestInit,
+): Promise<Record<string, any>> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    if (!response.ok) {
+      throw new Error(await readProviderError(response));
+    }
+    return (await response.json()) as Record<string, any>;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function normalizeHistory(history: ChatMessage[]): ChatMessage[] {
+  return history
+    .filter(
+      (message) =>
+        typeof message?.content === "string" && message.content.trim().length > 0,
+    )
+    .slice(-10)
+    .map((message) => ({
+      role:
+        message.role === "assistant" || message.role === "model"
+          ? message.role
+          : "user",
+      content: message.content,
+    }));
+}
+
+async function callGemini(
+  prompt: string,
+  history: ChatMessage[],
+  key: string,
+): Promise<string> {
+  const contents: { role: "user" | "model"; parts: { text: string }[] }[] = [
+    { role: "user", parts: [{ text: SYSTEM_PROMPT }] },
     { role: "model", parts: [{ text: "Understood." }] },
+    ...history.map((message) => ({
+      role:
+        message.role === "assistant" || message.role === "model"
+          ? ("model" as const)
+          : ("user" as const),
+      parts: [{ text: message.content }],
+    })),
+    { role: "user", parts: [{ text: prompt }] },
   ];
 
-  // Include conversation history
-  for (const msg of history) {
-    contents.push({
-      role: msg.role === "assistant" || msg.role === "model" ? "model" : "user",
-      parts: [{ text: msg.content }],
-    });
-  }
-  contents.push({ role: "user", parts: [{ text: prompt }] });
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`,
+  const data = await fetchJson(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 1024 } }),
-      signal,
-    }
+      body: JSON.stringify({
+        contents,
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+      }),
+    },
   );
-  if (!res.ok) throw new Error(`Gemini HTTP ${res.status}`);
-  const data = await res.json() as any;
-  const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Gemini empty response");
-  return text;
+
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (typeof text !== "string" || !text.trim()) {
+    throw new Error("empty response");
+  }
+  return text.trim();
 }
 
-// ─── OpenAI-compatible (Groq, Mistral, OpenRouter) ────────────────────────────
-async function callOpenAI(
+async function callOpenAiCompatible(
   url: string,
   model: string,
   key: string,
   prompt: string,
   history: ChatMessage[],
-  signal: AbortSignal,
-  extra?: Record<string, string>
+  extraHeaders?: Record<string, string>,
 ): Promise<string> {
-  const messages: { role: string; content: string }[] = [
+  const messages = [
     { role: "system", content: SYSTEM_PROMPT },
-    ...history.map((m) => ({ role: m.role === "model" ? "assistant" : m.role, content: m.content })),
+    ...history.map((message) => ({
+      role:
+        message.role === "assistant" || message.role === "model"
+          ? "assistant"
+          : "user",
+      content: message.content,
+    })),
     { role: "user", content: prompt },
   ];
 
-  const res = await fetch(url, {
+  const data = await fetchJson(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, ...extra },
-    body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 1024 }),
-    signal,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+      ...extraHeaders,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.7,
+      max_tokens: 1024,
+    }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json() as any;
-  const text: string | undefined = data?.choices?.[0]?.message?.content;
-  if (!text) throw new Error("Empty response");
-  return text;
+
+  const text = data?.choices?.[0]?.message?.content;
+  if (typeof text !== "string" || !text.trim()) {
+    throw new Error("empty response");
+  }
+  return text.trim();
 }
 
-// ─── Race all providers ────────────────────────────────────────────────────────
-async function raceProviders(prompt: string, history: ChatMessage[]): Promise<{ text: string; provider: string }> {
-  const providers: { name: string; fn: (signal: AbortSignal) => Promise<string> }[] = [];
-
-  const groqKey  = process.env.EXPO_PUBLIC_GROQ_API_KEY;
-  const geminiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-  const mistralKey = process.env.EXPO_PUBLIC_MISTRAL_API_KEY;
-  const openrouterKey = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY;
-
-  if (groqKey) providers.push({
-    name: "Groq",
-    fn: (s) => callOpenAI("https://api.groq.com/openai/v1/chat/completions", GROQ_MODEL, groqKey, prompt, history, s),
-  });
-  if (geminiKey) providers.push({
-    name: "Gemini",
-    fn: (s) => callGemini(prompt, history, s),
-  });
-  if (mistralKey) providers.push({
-    name: "Mistral",
-    fn: (s) => callOpenAI("https://api.mistral.ai/v1/chat/completions", MISTRAL_MODEL, mistralKey, prompt, history, s),
-  });
-  if (openrouterKey) providers.push({
-    name: "OpenRouter",
-    fn: (s) => callOpenAI(
-      "https://openrouter.ai/api/v1/chat/completions", OPENROUTER_MODEL, openrouterKey, prompt, history, s,
-      { "HTTP-Referer": "https://vertex-ai-chat.app", "X-Title": "Vertex AI Chat" }
-    ),
-  });
-
-  if (providers.length === 0) throw new Error("No API keys configured on server");
-
-  const controllers = providers.map(() => new AbortController());
-
-  // Global timeout
-  const globalTimer = setTimeout(() => controllers.forEach((c) => c.abort()), TIMEOUT_MS);
-
-  const races = providers.map((p, i) =>
-    p.fn(controllers[i].signal).then((text) => {
-      // Winner aborts everyone else
-      controllers.forEach((c, j) => { if (j !== i) c.abort(); });
-      return { text, provider: p.name };
-    })
+function buildProviders(): Provider[] {
+  const geminiKey = getEnvironmentKey(
+    "GEMINI_API_KEY",
+    "VITE_GEMINI_API_KEY",
+    "EXPO_PUBLIC_GEMINI_API_KEY",
+  );
+  const groqKey = getEnvironmentKey(
+    "GROQ_API_KEY",
+    "VITE_GROQ_API_KEY",
+    "EXPO_PUBLIC_GROQ_API_KEY",
+  );
+  const mistralKey = getEnvironmentKey(
+    "MISTRAL_API_KEY",
+    "VITE_MISTRAL_API_KEY",
+    "EXPO_PUBLIC_MISTRAL_API_KEY",
+  );
+  const openRouterKey = getEnvironmentKey(
+    "OPENROUTER_API_KEY",
+    "VITE_OPENROUTER_API_KEY",
+    "EXPO_PUBLIC_OPENROUTER_API_KEY",
   );
 
-  try {
-    const result = await Promise.any(races);
-    clearTimeout(globalTimer);
-    return result;
-  } catch (err: any) {
-    clearTimeout(globalTimer);
-    const msgs: string[] = err?.errors
-      ? (err.errors as Error[]).map((e: Error, i: number) => `${providers[i]?.name ?? i}: ${e.message}`)
-      : [String(err)];
-    throw new Error(msgs.join(" | "));
-  }
+  return [
+    {
+      name: "Gemini",
+      model: GEMINI_MODEL,
+      key: geminiKey,
+      call: (prompt, history) =>
+        geminiKey
+          ? callGemini(prompt, history, geminiKey)
+          : Promise.reject(new Error("API key not configured")),
+    },
+    {
+      name: "Groq",
+      model: GROQ_MODEL,
+      key: groqKey,
+      call: (prompt, history) =>
+        groqKey
+          ? callOpenAiCompatible(
+              "https://api.groq.com/openai/v1/chat/completions",
+              GROQ_MODEL,
+              groqKey,
+              prompt,
+              history,
+            )
+          : Promise.reject(new Error("API key not configured")),
+    },
+    {
+      name: "Mistral",
+      model: MISTRAL_MODEL,
+      key: mistralKey,
+      call: (prompt, history) =>
+        mistralKey
+          ? callOpenAiCompatible(
+              "https://api.mistral.ai/v1/chat/completions",
+              MISTRAL_MODEL,
+              mistralKey,
+              prompt,
+              history,
+            )
+          : Promise.reject(new Error("API key not configured")),
+    },
+    {
+      name: "OpenRouter",
+      model: OPENROUTER_MODEL,
+      key: openRouterKey,
+      call: (prompt, history) =>
+        openRouterKey
+          ? callOpenAiCompatible(
+              "https://openrouter.ai/api/v1/chat/completions",
+              OPENROUTER_MODEL,
+              openRouterKey,
+              prompt,
+              history,
+              {
+                "HTTP-Referer": "https://vertex-ai-chat.app",
+                "X-Title": "Vertex AI Chat",
+              },
+            )
+          : Promise.reject(new Error("API key not configured")),
+    },
+  ];
 }
 
-// ─── Route ────────────────────────────────────────────────────────────────────
-router.post("/chat", async (req: Request, res: Response) => {
+async function generateWithFallback(
+  prompt: string,
+  history: ChatMessage[],
+): Promise<{ text: string; provider: string }> {
+  const providers = buildProviders();
+  const primaryError = new Error("Gemini: API key not configured");
+
+  for (let index = 0; index < providers.length; index += 1) {
+    const provider = providers[index];
+    const label = `Provider ${index + 1} (${provider.name} - ${provider.model})`;
+
+    try {
+      if (!provider.key) {
+        throw new Error("API key not configured");
+      }
+
+      logger.info(
+        { provider: provider.name, model: provider.model },
+        `[Fallback Log] ${label} starting`,
+      );
+      const text = await provider.call(prompt, history);
+      logger.info(
+        { provider: provider.name, model: provider.model },
+        `[Fallback Log] ${label} succeeded`,
+      );
+      return { text, provider: provider.name };
+    } catch (error) {
+      const message = getErrorMessage(error);
+      if (index === 0) {
+        primaryError.message = `Gemini: ${message}`;
+      }
+      logger.warn(
+        { provider: provider.name, model: provider.model, error: message },
+        `[Fallback Log] ${label} failed. Switching to the next provider.`,
+      );
+    }
+  }
+
+  throw primaryError;
+}
+
+router.post("/chat", async (req: Request, res: ExpressResponse) => {
   try {
-    const { prompt, history = [] } = req.body as { prompt: string; history?: ChatMessage[] };
+    const { prompt, history = [] } = req.body as {
+      prompt?: string;
+      history?: ChatMessage[];
+    };
 
     if (!prompt?.trim()) {
       res.status(400).json({ error: "prompt is required" });
       return;
     }
 
-    const result = await raceProviders(prompt.trim(), Array.isArray(history) ? history : []);
+    const result = await generateWithFallback(
+      prompt.trim(),
+      Array.isArray(history) ? normalizeHistory(history) : [],
+    );
     res.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+  } catch (error) {
+    const message = getErrorMessage(error);
+    logger.error({ error: message }, "[Fallback Log] All providers failed");
     res.status(500).json({ error: message });
   }
 });
