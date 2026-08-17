@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 import type { ChatAttachment } from './fileUpload';
-
-const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || 'localhost'}/api`;
+import { getApiBaseUrl } from './apiConfig';
 
 // ─── Text chat via server (server has fast internet) ──────────────────────────
 
@@ -22,7 +21,7 @@ export async function sendTextToServer({ prompt, history = [] }: SendTextOptions
   const timer = setTimeout(() => controller.abort(), 40_000);
 
   try {
-    const response = await fetch(`${API_BASE}/chat`, {
+    const response = await fetch(`${getApiBaseUrl()}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt, history }),
@@ -56,7 +55,7 @@ export async function sendToBackend({ text, attachment }: SendToBackendOptions):
     form.append('file', filePart as any);
   }
 
-  const response = await fetch(`${API_BASE}/gemini`, {
+  const response = await fetch(`${getApiBaseUrl()}/gemini`, {
     method: 'POST',
     body: form,
   });

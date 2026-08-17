@@ -18,9 +18,7 @@
         "buildConfiguration": "Debug",
         "simulator": true
       },
-      "env": {
-        "EXPO_PUBLIC_DOMAIN": "localhost"
-      }
+      "env": {}
     },
 
     "preview": {
@@ -44,15 +42,6 @@
         "buildConfiguration": "Release"
       },
       "channel": "production"
-    }
-  },
-
-  "submit": {
-    "production": {
-      "android": {
-        "serviceAccountKeyPath": "./google-play-service-account.json",
-        "track": "internal"
-      }
     }
   }
 }

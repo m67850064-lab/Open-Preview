@@ -18,6 +18,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vertexai.app",
+      "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "Vertex AI को photos attach करने के लिए camera access चाहिए।",
         "NSPhotoLibraryUsageDescription": "Vertex AI को photos attach करने के लिए photo library access चाहिए।",
@@ -38,16 +39,15 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.VIBRATE"
       ],
 
       "softwareKeyboardLayoutMode": "resize",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "usesCleartextTraffic": false
     },
 
     "web": {

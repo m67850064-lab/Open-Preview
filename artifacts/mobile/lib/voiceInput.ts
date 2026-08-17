@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { getApiBaseUrl } from './apiConfig';
 
 // ─── Web Speech Recognition ───────────────────────────────────────────────────
 
@@ -32,7 +33,10 @@ let nativeRecording: any = null;
 
 async function startNativeRecording(): Promise<void> {
   const { Audio } = await import('expo-av');
-  await Audio.requestPermissionsAsync();
+  const permission = await Audio.requestPermissionsAsync();
+  if (!permission.granted) {
+    throw new Error('Microphone permission is required for voice input.');
+  }
   await Audio.setAudioModeAsync({
     allowsRecordingIOS: true,
     playsInSilentModeIOS: true,
@@ -73,24 +77,30 @@ async function stopNativeRecording(): Promise<string | null> {
     const uri = nativeRecording.getURI();
     nativeRecording = null;
 
-    const apiKey = process.env.EXPO_PUBLIC_GROQ_API_KEY;
-    if (!apiKey || !uri) return null;
+    if (!uri) return null;
 
-    // Build multipart form data
+    // Send audio to our backend. The Groq key stays server-side and is never
+    // bundled into an APK/AAB.
     const formData = new FormData();
     const filename = uri.split('/').pop() ?? 'audio.m4a';
     const ext = filename.split('.').pop() ?? 'm4a';
     const mimeType = ext === 'mp4' ? 'audio/mp4' : ext === 'webm' ? 'audio/webm' : 'audio/m4a';
 
     formData.append('file', { uri, name: filename, type: mimeType } as any);
-    formData.append('model', 'whisper-large-v3-turbo');
-    formData.append('response_format', 'json');
 
-    const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: formData,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    let res: Response;
+    try {
+      res = await fetch(`${getApiBaseUrl()}/transcribe`, {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        body: formData,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!res.ok) return null;
     const json = await res.json();
