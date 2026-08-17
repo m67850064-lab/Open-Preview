@@ -99,6 +99,13 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3321011265804128~3793245628"
+        }
       ]
     ],
 

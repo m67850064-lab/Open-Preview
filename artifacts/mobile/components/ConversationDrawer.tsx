@@ -18,6 +18,7 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { GeminiStar } from './GeminiStar';
+import { DrawerBannerAd } from './AdMobBanner';
 import type { Conversation } from '@/context/ConversationContext';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.82, 300);
@@ -185,28 +186,33 @@ export function ConversationDrawer({
         )}
 
         {/* Conversations list */}
-        <FlatList
-          data={conversations}
-          keyExtractor={(c) => c.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                No conversations yet
-              </Text>
-            </View>
-          }
-          renderItem={({ item }) => (
-            <ConversationItem
-              conversation={item}
-              isActive={item.id === activeId}
-              onSelect={() => onSelectChat(item.id)}
-              onDelete={() => onDeleteChat(item.id)}
-              onRename={(title) => onRenameChat(item.id, title)}
-            />
-          )}
-        />
+        <View style={styles.listWrapper}>
+          <FlatList
+            data={conversations}
+            keyExtractor={(c) => c.id}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                  No conversations yet
+                </Text>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <ConversationItem
+                conversation={item}
+                isActive={item.id === activeId}
+                onSelect={() => onSelectChat(item.id)}
+                onDelete={() => onDeleteChat(item.id)}
+                onRename={(title) => onRenameChat(item.id, title)}
+              />
+            )}
+          />
+        </View>
+
+        {/* Only mounted while the drawer is open; the main chat is ad-free. */}
+        {visible && <DrawerBannerAd visible={visible} />}
       </Animated.View>
     </Modal>
   );
@@ -392,6 +398,9 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 8,
     paddingBottom: 16,
+  },
+  listWrapper: {
+    flex: 1,
   },
   emptyState: {
     paddingHorizontal: 10,
