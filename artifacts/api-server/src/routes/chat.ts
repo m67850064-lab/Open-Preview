@@ -7,6 +7,7 @@
  */
 import { Router, type Request, type Response as ExpressResponse } from "express";
 import { logger } from "../lib/logger";
+import { AI_SYSTEM_PROMPT } from "../lib/aiSystemPrompt";
 
 const router = Router();
 
@@ -16,13 +17,6 @@ const MISTRAL_MODEL = "mistral-small-latest";
 const OPENROUTER_MODEL = "openrouter/auto";
 
 const PROVIDER_TIMEOUT_MS = 8_000;
-
-const SYSTEM_PROMPT =
-  "You are Vertex AI, a friendly and helpful conversational assistant. " +
-  "Reply directly and naturally in the same language the user speaks — " +
-  "whether that is English, Hindi, Roman Urdu, or any other language. " +
-  "Be concise, clear, and conversational. Do not echo or repeat the user's " +
-  "question back. Just answer helpfully.";
 
 interface ChatMessage {
   role: "user" | "assistant" | "model";
@@ -113,7 +107,7 @@ async function callGemini(
   key: string,
 ): Promise<string> {
   const contents: { role: "user" | "model"; parts: { text: string }[] }[] = [
-    { role: "user", parts: [{ text: SYSTEM_PROMPT }] },
+    { role: "user", parts: [{ text: AI_SYSTEM_PROMPT }] },
     { role: "model", parts: [{ text: "Understood." }] },
     ...history.map((message) => ({
       role:
@@ -153,7 +147,7 @@ async function callOpenAiCompatible(
   extraHeaders?: Record<string, string>,
 ): Promise<string> {
   const messages = [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: AI_SYSTEM_PROMPT },
     ...history.map((message) => ({
       role:
         message.role === "assistant" || message.role === "model"

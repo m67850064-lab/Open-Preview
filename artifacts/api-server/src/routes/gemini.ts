@@ -5,6 +5,7 @@ import { GoogleAIFileManager } from "@google/generative-ai/server";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { AI_SYSTEM_PROMPT } from "../lib/aiSystemPrompt";
 
 const router = Router();
 
@@ -85,7 +86,11 @@ router.post("/gemini", upload.single("file"), async (req: Request, res: Response
     }
 
     const result = await model.generateContent({
-      contents: [{ role: "user", parts }],
+      contents: [
+        { role: "user", parts: [{ text: AI_SYSTEM_PROMPT }] },
+        { role: "model", parts: [{ text: "Understood." }] },
+        { role: "user", parts },
+      ],
     });
 
     const responseText = result.response.text();
