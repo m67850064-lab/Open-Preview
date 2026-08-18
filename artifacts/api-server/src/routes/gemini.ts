@@ -10,6 +10,8 @@ import { AI_SYSTEM_PROMPT } from "../lib/aiSystemPrompt";
 const router = Router();
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const PRIMARY_GEMINI_MODEL = "gemini-1.5-flash";
+const FALLBACK_GEMINI_MODEL = "gemini-2.5-flash";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -28,6 +30,17 @@ function getApiKey(): string | undefined {
   return process.env.GEMINI_API_KEY || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 }
 
+function isModelUnavailableError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("404") &&
+    (normalized.includes("not found") ||
+      normalized.includes("not supported") ||
+      normalized.includes("does not exist"))
+  );
+}
+
 router.post("/gemini", upload.single("file"), async (req: Request, res: Response) => {
   try {
     const apiKey = getApiKey();
@@ -41,7 +54,6 @@ router.post("/gemini", upload.single("file"), async (req: Request, res: Response
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const fileManager = new GoogleAIFileManager(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
 
     const parts: Part[] = [];
 
@@ -85,13 +97,27 @@ router.post("/gemini", upload.single("file"), async (req: Request, res: Response
       return;
     }
 
-    const result = await model.generateContent({
-      contents: [
-        { role: "user", parts: [{ text: AI_SYSTEM_PROMPT }] },
-        { role: "model", parts: [{ text: "Understood." }] },
-        { role: "user", parts },
-      ],
-    });
+    const contents = [
+      { role: "user" as const, parts: [{ text: AI_SYSTEM_PROMPT }] },
+      { role: "model" as const, parts: [{ text: "Understood." }] },
+      { role: "user" as const, parts },
+    ];
+
+    let result;
+    try {
+      const model = genAI.getGenerativeModel({ model: PRIMARY_GEMINI_MODEL });
+      result = await model.generateContent({ contents });
+    } catch (error) {
+      if (!isModelUnavailableError(error)) throw error;
+
+      console.warn(
+        `[Gemini] ${PRIMARY_GEMINI_MODEL} is unavailable; retrying with ${FALLBACK_GEMINI_MODEL}`,
+      );
+      const fallbackModel = genAI.getGenerativeModel({
+        model: FALLBACK_GEMINI_MODEL,
+      });
+      result = await fallbackModel.generateContent({ contents });
+    }
 
     const responseText = result.response.text();
     res.json({ text: responseText, provider: "Gemini" });

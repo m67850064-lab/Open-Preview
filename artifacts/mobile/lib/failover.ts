@@ -16,7 +16,7 @@ export interface GenerateResult {
   provider: string;
 }
 
-const GEMINI_MODEL    = 'gemini-2.0-flash-lite';
+const GEMINI_MODEL    = 'gemini-1.5-flash';
 const GROQ_MODEL      = 'llama-3.3-70b-versatile';
 const MISTRAL_MODEL   = 'mistral-small-latest';
 const OPENROUTER_MODEL = 'openai/gpt-4o-mini';
