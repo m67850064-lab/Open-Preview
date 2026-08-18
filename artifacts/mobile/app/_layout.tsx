@@ -26,6 +26,7 @@ function RootLayoutNav() {
     <ThemeProvider>
       <ConversationProvider>
         <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         </Stack>
       </ConversationProvider>

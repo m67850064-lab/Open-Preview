@@ -1,7 +1,11 @@
-import { Slot } from 'expo-router';
+import { Stack } from 'expo-router';
 
 // Single-screen chat app — no tab bar needed.
-// Slot renders the active child route directly.
+// Explicitly declare the child route so Expo Router always finds a screen.
 export default function TabsLayout() {
-  return <Slot />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+    </Stack>
+  );
 }
